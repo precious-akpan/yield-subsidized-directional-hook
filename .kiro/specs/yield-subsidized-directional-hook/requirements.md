@@ -20,6 +20,11 @@ This hook addresses the fundamental challenge of LP profitability in automated m
 - **Keeper**: Automated bot or external actor that triggers permissionless capital sweep operations
 - **Claim_Token**: ERC-1155 token representing a deferred claim on principal locked in external yield vaults
 - **Yield_Vault**: External ERC-4626 compatible contract that accepts deposits and generates yield
+- **Reactive_Network**: Decentralized automation network that monitors blockchain events and triggers callback contracts
+- **ReactiveSubscriber**: Contract deployed on origin chain that monitors hook events and forwards them to Reactive Network
+- **ReactiveKeeperCallback**: Contract deployed on Reactive Network that evaluates sweep conditions and triggers automated capital sweeps
+- **Sweep_Threshold**: Minimum amount of idle capital required to trigger an automated capital sweep
+- **Sweep_Interval**: Minimum time that must pass between consecutive automated capital sweeps for a pool
 
 
 ## Requirements
@@ -526,3 +531,124 @@ This hook addresses the fundamental challenge of LP profitability in automated m
 3. THE Hook SHALL provide a view function to query the total subsidy pool balance for a pool
 4. THE Hook SHALL provide a view function to query total idle capital available for sweeping in a pool
 5. THE Hook SHALL provide a view function to query an LP's position data including initial deposit amounts and tick range
+
+
+### Requirement 41: Idle Capital Event Emission
+
+**User Story:** As a Reactive Network automation system, I want the hook to emit events when idle capital is detected, so that I can trigger automated capital sweeps.
+
+#### Acceptance Criteria
+
+1. WHEN idle capital is detected above a minimum threshold, THE Hook SHALL emit an IdleCapitalDetected event
+2. THE IdleCapitalDetected event SHALL include the pool identifier, idle amounts for token0 and token1, and the PoolKey structure
+3. THE event SHALL be emitted during liquidity modifications when out-of-range positions are created or enlarged
+4. THE event SHALL include sufficient information for automated keepers to call sweepIdleCapital with correct parameters
+5. THE Hook SHALL NOT emit IdleCapitalDetected events when idle capital is below configured minimum thresholds to avoid spam
+
+### Requirement 42: Reactive Keeper Callback Interface
+
+**User Story:** As a Reactive Network developer, I want a standardized interface for automated keeper callbacks, so that I can integrate with the hook's capital sweep functionality.
+
+#### Acceptance Criteria
+
+1. THE ReactiveKeeperCallback contract SHALL implement the IReactive interface from Reactive Network
+2. THE ReactiveKeeperCallback SHALL define a react function that accepts event topics, data, origin chain, and sender address
+3. WHEN the react function is called by Reactive Network service, THE callback SHALL validate the caller is the authorized Reactive Network service address
+4. THE ReactiveKeeperCallback SHALL extract pool information and idle capital amounts from event data
+5. THE ReactiveKeeperCallback SHALL maintain last sweep timestamps per pool to enforce minimum sweep intervals
+
+### Requirement 43: Automated Sweep Threshold Validation
+
+**User Story:** As a Reactive Network keeper callback, I want to validate sweep conditions before triggering, so that I only execute profitable and necessary sweeps.
+
+#### Acceptance Criteria
+
+1. THE ReactiveKeeperCallback SHALL store a configurable sweep threshold parameter per pool or globally
+2. WHEN evaluating whether to trigger a sweep, THE callback SHALL compare idle capital amounts against the sweep threshold
+3. THE callback SHALL only trigger sweepIdleCapital if idle amount for token0 OR token1 exceeds the threshold
+4. THE sweep threshold SHALL be configurable by an admin address to adapt to changing gas prices and market conditions
+5. THE callback SHALL emit an event when a sweep is skipped due to threshold not being met for monitoring purposes
+
+### Requirement 44: Sweep Interval Enforcement
+
+**User Story:** As a Reactive Network keeper callback, I want to enforce minimum time intervals between sweeps, so that I avoid excessive gas costs and transaction spam.
+
+#### Acceptance Criteria
+
+1. THE ReactiveKeeperCallback SHALL store a minimum sweep interval parameter (e.g., 1 hour) per pool or globally
+2. THE callback SHALL track the timestamp of the last successful sweep for each pool
+3. WHEN evaluating whether to trigger a sweep, THE callback SHALL verify that sufficient time has passed since the last sweep
+4. IF the minimum interval has not passed, THEN THE callback SHALL revert with a SweepTooSoon error
+5. THE minimum sweep interval SHALL be configurable by an admin address to balance yield optimization with gas costs
+
+### Requirement 45: Reactive Subscriber Event Monitoring
+
+**User Story:** As a Reactive Network integrator, I want a subscriber contract that monitors hook events, so that automation can be triggered without centralized infrastructure.
+
+#### Acceptance Criteria
+
+1. THE ReactiveSubscriber contract SHALL be deployed on the origin chain where the hook operates
+2. THE ReactiveSubscriber SHALL subscribe to LiquidityModified and IdleCapitalDetected events from the hook contract
+3. THE ReactiveSubscriber SHALL implement the IReactive interface to forward events to Reactive Network
+4. WHEN the ReactiveSubscriber receives an event, IT SHALL validate the event originates from the monitored hook address
+5. THE ReactiveSubscriber SHALL forward relevant events to the configured ReactiveKeeperCallback address on Reactive Network
+
+### Requirement 46: Reactive Automation Access Control
+
+**User Story:** As a security auditor, I want Reactive Network automation contracts to have proper access control, so that only authorized entities can configure automation parameters.
+
+#### Acceptance Criteria
+
+1. THE ReactiveKeeperCallback SHALL maintain an admin address with exclusive rights to update configuration
+2. WHEN setSweepThreshold or setMinSweepInterval is called, THE callback SHALL verify the caller is the admin address
+3. THE ReactiveKeeperCallback SHALL provide a transferAdmin function to change the admin address
+4. THE ReactiveSubscriber SHALL maintain an admin address for configuration updates
+5. WHEN configuration functions are called by unauthorized addresses, THE contracts SHALL revert with an Unauthorized error
+
+### Requirement 47: Reactive Network Service Validation
+
+**User Story:** As a security auditor, I want automation contracts to validate calls from Reactive Network, so that malicious actors cannot spoof automation triggers.
+
+#### Acceptance Criteria
+
+1. THE ReactiveKeeperCallback SHALL store the Reactive Network service address during deployment
+2. WHEN the react function is invoked, THE callback SHALL verify msg.sender equals the stored service address
+3. IF msg.sender does not match the service address, THEN THE callback SHALL revert with an Unauthorized error
+4. THE ReactiveSubscriber SHALL also validate calls are from the Reactive Network service
+5. THE service address SHALL be immutable after deployment to prevent configuration attacks
+
+### Requirement 48: Automation Configuration Events
+
+**User Story:** As an automation operator, I want events emitted when automation parameters are updated, so that I can monitor configuration changes and their impact.
+
+#### Acceptance Criteria
+
+1. WHEN sweep threshold is updated, THE ReactiveKeeperCallback SHALL emit a ThresholdUpdated event with old and new values
+2. WHEN minimum sweep interval is updated, THE callback SHALL emit an IntervalUpdated event with old and new values
+3. WHEN admin rights are transferred, THE contracts SHALL emit an AdminTransferred event with old and new admin addresses
+4. WHEN a sweep is automatically triggered, THE callback SHALL emit a SweepTriggered event with pool ID and idle amounts
+5. THE events SHALL include sufficient detail for off-chain analytics and monitoring systems
+
+### Requirement 49: Hook-Automation Interface Compatibility
+
+**User Story:** As the hook contract, I want to expose a clean interface for automation systems, so that Reactive Network and other keepers can interact efficiently.
+
+#### Acceptance Criteria
+
+1. THE Hook SHALL implement the IYieldSubsidizedDirectionalHook interface for automation compatibility
+2. THE interface SHALL expose getIdleCapital, sweepIdleCapital, getPoolConfig, and getSubsidyPool functions
+3. THE interface SHALL define all events that automation systems need to monitor
+4. THE Hook SHALL ensure all interface functions are gas-efficient for automation use
+5. THE interface SHALL be versioned and backward compatible with existing automation deployments
+
+### Requirement 50: Multi-Pool Automation Support
+
+**User Story:** As a Reactive Network operator, I want a single automation deployment to handle multiple pools, so that I can minimize deployment overhead and operational complexity.
+
+#### Acceptance Criteria
+
+1. THE ReactiveKeeperCallback SHALL support monitoring and sweeping multiple pools from a single contract instance
+2. THE callback SHALL maintain separate last sweep timestamps for each pool ID
+3. THE callback SHALL apply threshold and interval checks independently per pool
+4. THE ReactiveSubscriber SHALL be able to subscribe to events from multiple hook deployments
+5. THE automation system SHALL scale efficiently to handle 10+ pools without gas issues

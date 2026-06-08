@@ -415,7 +415,130 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test paused pool allows liquidity removal without subsidies
     - _Requirements: 33.1-33.5_
 
-- [ ] 21. Final checkpoint - Complete verification
+- [ ] 21. Implement Reactive Network automation contracts
+  - [ ] 21.1 Create IYieldSubsidizedDirectionalHook interface
+    - Define interface for automation compatibility
+    - Include `sweepIdleCapital`, `getIdleCapital`, `getPoolConfig`, `getSubsidyPool`, `isPoolRegistered` functions
+    - Define events: `IdleCapitalDetected`, `CapitalSwept`, `ILSubsidyDistributed`, `ClaimTokenMinted`
+    - Add comprehensive NatSpec documentation
+    - _Requirements: 41.1-41.5, 49.1-49.5_
+  
+  - [ ] 21.2 Implement ReactiveKeeperCallback contract
+    - Inherit from AbstractReactive (Reactive Network SDK)
+    - Store immutable hook address and Reactive Network service address
+    - Implement storage for sweep threshold and minimum sweep interval
+    - Maintain mapping of last sweep timestamps per pool
+    - Create `react(uint256[] topics, bytes data, uint256 origin, address sender)` function
+    - Validate caller is Reactive Network service
+    - Decode pool ID and idle amounts from event data
+    - Check sweep interval (block.timestamp >= lastSweepTime + minInterval)
+    - Check sweep threshold (idle amount >= threshold)
+    - Call hook.sweepIdleCapital(poolKey) if conditions met
+    - Update lastSweepTime mapping
+    - Emit SweepTriggered event
+    - _Requirements: 42.1-42.5, 43.1-43.5, 44.1-44.5, 47.1-47.5, 50.1-50.5_
+  
+  - [ ] 21.3 Implement ReactiveSubscriber contract
+    - Inherit from AbstractReactive (Reactive Network SDK)
+    - Store immutable hook address, callback address, and Reactive Network service address
+    - Define event topic constants for LiquidityModified and IdleCapitalDetected
+    - Subscribe to hook events in constructor via Reactive Network service
+    - Implement `react(uint256[] topics, bytes data, uint256 origin, address sender)` function
+    - Validate caller is Reactive Network service
+    - Validate event sender is monitored hook address
+    - Forward event to callback contract via IReactive interface
+    - _Requirements: 45.1-45.5, 47.1-47.5_
+  
+  - [ ] 21.4 Add automation configuration functions
+    - Implement `setSweepThreshold(uint256)` with onlyAdmin modifier in callback
+    - Implement `setMinSweepInterval(uint256)` with onlyAdmin modifier in callback
+    - Implement `transferAdmin(address)` in both contracts
+    - Emit ThresholdUpdated, IntervalUpdated, AdminTransferred events
+    - Add `canSweep(bytes32 poolId)` view function to check readiness
+    - _Requirements: 43.1-43.5, 44.1-44.5, 46.1-46.5, 48.1-48.5_
+  
+  - [ ]* 21.5 Write unit tests for Reactive Network automation
+    - Test ReactiveKeeperCallback threshold validation
+    - Test ReactiveKeeperCallback interval enforcement
+    - Test ReactiveSubscriber event forwarding
+    - Test access control on configuration functions
+    - Test automated sweep triggering with mock hook
+    - Mock Reactive Network service for testing
+    - _Requirements: 42.1-42.5, 43.1-43.5, 44.1-44.5, 45.1-45.5, 46.1-46.5_
+
+- [ ] 22. Add IdleCapitalDetected event emission to hook
+  - [ ] 22.1 Define IdleCapitalDetected event in hook contract
+    - Add event with parameters: poolId, idleAmount0, idleAmount1, poolKey
+    - Include comprehensive NatSpec documentation
+    - _Requirements: 41.1-41.5_
+  
+  - [ ] 22.2 Implement idle capital detection trigger
+    - Create `_emitIdleCapitalIfNeeded(PoolKey)` internal function
+    - Call calculateIdleCapital to get current idle amounts
+    - Compare against minimum detection threshold (e.g., 0.1 ETH)
+    - Emit IdleCapitalDetected if threshold exceeded
+    - Call from beforeRemoveLiquidity after LP exits
+    - Call from afterSwap if price moves significantly (optional)
+    - _Requirements: 41.1-41.5_
+  
+  - [ ]* 22.3 Write unit tests for idle capital event emission
+    - Test event emission when idle capital exceeds threshold
+    - Test no event when idle capital below threshold
+    - Test event includes correct pool and amounts
+    - Verify event can be monitored by ReactiveSubscriber
+    - _Requirements: 41.1-41.5_
+
+- [ ] 23. Create deployment script for Reactive Network automation
+  - [ ] 23.1 Create DeployReactiveAutomation.s.sol script
+    - Read environment variables: REACTIVE_SERVICE_ADDRESS, HOOK_ADDRESS, SWEEP_THRESHOLD, SWEEP_INTERVAL
+    - Deploy ReactiveKeeperCallback on Reactive Network
+    - Deploy ReactiveSubscriber on origin chain
+    - Log deployment addresses and configuration
+    - Provide verification instructions
+    - _Requirements: 42.1-42.5, 45.1-45.5_
+  
+  - [ ]* 23.2 Test deployment script
+    - Verify script runs successfully on local testnet
+    - Verify environment variable loading
+    - Verify contracts deploy with correct parameters
+    - Test deployment on public testnet (optional)
+    - _Requirements: All Reactive Network requirements_
+
+- [ ] 24. Create integration tests for automated sweeps
+  - [ ]* 24.1 Write end-to-end automated sweep test
+    - Deploy hook, ReactiveSubscriber, and ReactiveKeeperCallback
+    - Create out-of-range LP positions
+    - Emit IdleCapitalDetected event
+    - Simulate Reactive Network triggering callback.react()
+    - Verify sweepIdleCapital executed successfully
+    - Verify capital transferred to vaults
+    - Verify lastSweepTime updated
+    - _Requirements: 41.1-41.5, 42.1-42.5, 43.1-43.5, 44.1-44.5, 50.1-50.5_
+  
+  - [ ]* 24.2 Write threshold filtering test
+    - Emit IdleCapitalDetected with amount below threshold
+    - Verify sweep NOT triggered
+    - Emit IdleCapitalDetected with amount above threshold
+    - Verify sweep IS triggered
+    - _Requirements: 43.1-43.5_
+  
+  - [ ]* 24.3 Write interval enforcement test
+    - Trigger first automated sweep successfully
+    - Immediately trigger second sweep attempt
+    - Verify SweepTooSoon revert
+    - Fast-forward time beyond interval
+    - Verify second sweep succeeds
+    - _Requirements: 44.1-44.5_
+  
+  - [ ]* 24.4 Write multi-pool automation test
+    - Set up two pools with different configurations
+    - Trigger sweeps for both pools
+    - Verify independent interval tracking
+    - Verify independent threshold checking
+    - Verify isolated lastSweepTime per pool
+    - _Requirements: 50.1-50.5_
+
+- [ ] 25. Final checkpoint - Complete verification with automation
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
@@ -513,6 +636,26 @@ The implementation follows a dependency-ordered approach, starting with foundati
     {
       "id": 19,
       "tasks": ["20.1", "20.2", "20.3", "20.4", "20.5"]
+    },
+    {
+      "id": 20,
+      "tasks": ["21.1", "21.2", "21.3"]
+    },
+    {
+      "id": 21,
+      "tasks": ["21.4", "21.5"]
+    },
+    {
+      "id": 22,
+      "tasks": ["22.1", "22.2"]
+    },
+    {
+      "id": 23,
+      "tasks": ["22.3", "23.1"]
+    },
+    {
+      "id": 24,
+      "tasks": ["23.2", "24.1", "24.2", "24.3", "24.4"]
     }
   ]
 }

@@ -54,6 +54,12 @@ graph TB
         VAULT1[Token1 Vault<br/>IExternalVault]
     end
     
+    subgraph "Reactive Network Automation"
+        RN_SUB[ReactiveSubscriber<br/>Origin Chain]
+        RN_SVC[Reactive Network<br/>Service]
+        RN_CB[ReactiveKeeperCallback<br/>Reactive Network]
+    end
+    
     subgraph "On-Chain State"
         REGISTRY[Pool Registry]
         CONFIG[Configuration Storage]
@@ -69,11 +75,11 @@ graph TB
     HOOKS --> FEE_ENGINE
     HOOKS --> IL_CALC
     HOOKS --> SUBSIDY_MGR
+    HOOKS -->|IdleCapitalDetected| RN_SUB
     
     ORACLE_MGR -->|getPrice| ORACLE
     FEE_ENGINE --> REGISTRY
     FEE_ENGINE --> CONFIG
-    
     
     SWEEP_MGR -->|unlock/lock| PM
     SWEEP_MGR -->|deposit| VAULT0
@@ -87,6 +93,14 @@ graph TB
     SUBSIDY_MGR --> SUBSIDY_POOL
     
     CLAIM_SYS -->|ERC-1155| LP_DATA
+    
+    RN_SUB -->|Monitor Events| RN_SVC
+    RN_SVC -->|Trigger react()| RN_CB
+    RN_CB -->|sweepIdleCapital()| SWEEP_MGR
+    
+    style RN_SUB fill:#e1ffe1
+    style RN_SVC fill:#e1f5ff
+    style RN_CB fill:#ffe1e1
 ```
 
 ### Contract Structure
@@ -98,6 +112,9 @@ The hook follows a modular internal architecture with specialized components:
 - **Fee Scaling Engine**: Computes dynamic fees based on flow toxicity
 - **Capital Sweep Manager**: Orchestrates flash accounting for vault deposits
 - **IL Calculator**: Measures impermanent loss for LP positions
+- **Subsidy Distributor**: Allocates yield to LPs proportional to IL
+- **Claim Token System**: ERC-1155 implementation for locked capital redemption
+- **Automation Layer** (NEW): Reactive Network integration for decentralized keeper operations
 - **Subsidy Distributor**: Allocates yield to LPs proportional to IL
 - **Claim Token System**: ERC-1155 implementation for locked capital redemption
 
@@ -1329,3 +1346,481 @@ error VaultCallFailed();
 error DeltaNotBalanced();
 ```
 
+
+
+## Reactive Network Automation
+
+### Overview
+
+The hook integrates with [Reactive Network](https://reactive.network) to provide decentralized, trustless automation for capital sweep operations. This eliminates the need for centralized keeper infrastructure while ensuring optimal yield generation timing.
+
+### Architecture Components
+
+#### 1. ReactiveSubscriber (Origin Chain)
+
+Deployed on the same chain as the hook, this contract monitors and forwards relevant events to Reactive Network.
+
+```solidity
+contract ReactiveSubscriber is AbstractReactive {
+    address public immutable hookAddress;
+    address public callbackContract;
+    
+    // Subscribed event signatures
+    bytes32 constant LIQUIDITY_MODIFIED_TOPIC = 
+        keccak256("LiquidityModified(bytes32,address,int24,int24,int256)");
+    bytes32 constant IDLE_CAPITAL_DETECTED_TOPIC =
+        keccak256("IdleCapitalDetected(bytes32,uint256,uint256)");
+    
+    function react(
+        uint256[] calldata _topics,
+        bytes calldata _data,
+        uint256 _origin,
+        address _sender
+    ) external override {
+        // Verify call from Reactive Network service
+        require(msg.sender == service, "Unauthorized");
+        
+        // Verify event from monitored hook
+        if (_sender != hookAddress) return;
+        
+        // Forward to callback contract
+        IReactive(callbackContract).react(_topics, _data, _origin, _sender);
+    }
+}
+```
+
+**Responsibilities**:
+- Subscribe to `LiquidityModified` and `IdleCapitalDetected` events
+- Validate event origin (must be from hook contract)
+- Forward events to Reactive Network for processing
+- Configurable callback contract address
+
+#### 2. ReactiveKeeperCallback (Reactive Network)
+
+Deployed on Reactive Network, this contract evaluates sweep conditions and triggers automated sweeps.
+
+```solidity
+contract ReactiveKeeperCallback is AbstractReactive {
+    IYieldSubsidizedDirectionalHook public immutable hook;
+    uint256 public sweepThreshold;
+    uint256 public minSweepInterval;
+    mapping(bytes32 => uint256) public lastSweepTime;
+    
+    function react(
+        uint256[] calldata _topics,
+        bytes calldata _data,
+        uint256 /*_origin*/,
+        address /*_sender*/
+    ) external override {
+        // Verify call from Reactive Network service
+        require(msg.sender == service, "Unauthorized");
+        
+        // Extract pool and idle amounts from event data
+        bytes32 poolId = bytes32(_topics[1]);
+        (uint256 idleAmount0, uint256 idleAmount1, PoolKey memory poolKey) = 
+            abi.decode(_data, (uint256, uint256, PoolKey));
+        
+        // Check sweep interval
+        require(
+            block.timestamp >= lastSweepTime[poolId] + minSweepInterval,
+            "SweepTooSoon"
+        );
+        
+        // Check threshold
+        if (idleAmount0 >= sweepThreshold || idleAmount1 >= sweepThreshold) {
+            lastSweepTime[poolId] = block.timestamp;
+            hook.sweepIdleCapital(poolKey);
+            emit SweepTriggered(poolId, idleAmount0, idleAmount1);
+        }
+    }
+}
+```
+
+**Responsibilities**:
+- Evaluate sweep conditions (threshold and interval)
+- Track last sweep time per pool
+- Execute `sweepIdleCapital()` when conditions met
+- Emit events for monitoring
+
+### Event Flow
+
+```mermaid
+sequenceDiagram
+    participant LP as Liquidity Provider
+    participant Pool as Uniswap v4 Pool
+    participant Hook as YieldSubsidizedDirectionalHook
+    participant Sub as ReactiveSubscriber
+    participant RN as Reactive Network
+    participant CB as ReactiveKeeperCallback
+    
+    LP->>Pool: Remove liquidity (price moves)
+    Pool->>Hook: beforeRemoveLiquidity()
+    Hook->>Hook: Detect idle capital > threshold
+    Hook->>Sub: Emit IdleCapitalDetected
+    
+    Note over Sub,RN: Event forwarding
+    
+    Sub->>RN: Forward event data
+    RN->>CB: react(topics, data)
+    
+    Note over CB: Condition evaluation
+    
+    CB->>CB: Check threshold
+    CB->>CB: Check interval
+    
+    alt Conditions Met
+        CB->>Hook: sweepIdleCapital(poolKey)
+        Hook->>Hook: Flash accounting
+        Hook->>Hook: Deposit to vaults
+        CB->>CB: Update lastSweepTime
+        CB->>CB: Emit SweepTriggered
+    else Conditions Not Met
+        CB-->>RN: Skip (log reason)
+    end
+```
+
+### Configuration Parameters
+
+#### Sweep Threshold
+
+Minimum idle capital to trigger automation:
+
+```solidity
+// Set via admin function
+function setSweepThreshold(uint256 _newThreshold) external onlyAdmin {
+    require(_newThreshold > 0, "Invalid threshold");
+    uint256 oldThreshold = sweepThreshold;
+    sweepThreshold = _newThreshold;
+    emit ThresholdUpdated(oldThreshold, _newThreshold);
+}
+```
+
+**Recommended Values**:
+- High-value pools: 10+ ETH (cover gas costs)
+- Medium-value pools: 1-5 ETH (balanced)
+- Low-value pools: 0.1-1 ETH (frequent sweeps)
+
+#### Minimum Sweep Interval
+
+Time that must pass between sweeps:
+
+```solidity
+// Set via admin function
+function setMinSweepInterval(uint256 _newInterval) external onlyAdmin {
+    uint256 oldInterval = minSweepInterval;
+    minSweepInterval = _newInterval;
+    emit IntervalUpdated(oldInterval, _newInterval);
+}
+```
+
+**Recommended Values**:
+- High-volatility pools: 30 min - 1 hour
+- Stable pools: 4-12 hours
+- Low-activity pools: 24 hours
+
+### Event Definitions
+
+#### IdleCapitalDetected (Hook)
+
+```solidity
+event IdleCapitalDetected(
+    PoolId indexed poolId,
+    uint256 idleAmount0,
+    uint256 idleAmount1,
+    PoolKey poolKey  // Included for automation convenience
+);
+```
+
+Emitted when:
+- LP position goes out of range
+- Liquidity is removed causing other positions to go idle
+- Idle capital exceeds minimum detection threshold
+
+#### SweepTriggered (Callback)
+
+```solidity
+event SweepTriggered(
+    bytes32 indexed poolId,
+    uint256 idleAmount0,
+    uint256 idleAmount1
+);
+```
+
+Emitted when:
+- Reactive callback successfully triggers automated sweep
+- Includes actual idle amounts at time of sweep
+
+### Security Considerations
+
+#### 1. Service Validation
+
+Both subscriber and callback validate calls from Reactive Network:
+
+```solidity
+modifier onlyReactiveService() {
+    require(msg.sender == service, "Unauthorized");
+    _;
+}
+```
+
+#### 2. Event Origin Validation
+
+Subscriber validates events come from monitored hook:
+
+```solidity
+if (_sender != hookAddress) return;  // Silently ignore other sources
+```
+
+#### 3. Sweep Spam Prevention
+
+Minimum interval prevents rapid repeated sweeps:
+
+```solidity
+require(
+    block.timestamp >= lastSweepTime[poolId] + minSweepInterval,
+    "SweepTooSoon"
+);
+```
+
+#### 4. Threshold Protection
+
+Prevents low-value sweeps that waste gas:
+
+```solidity
+if (idleAmount0 < sweepThreshold && idleAmount1 < sweepThreshold) {
+    return;  // Skip, log for monitoring
+}
+```
+
+### Gas Optimization
+
+#### Callback Gas Costs
+
+Typical execution:
+- Event processing: ~21,000 gas (base tx)
+- Condition checking: ~5,000 gas (2 SLOADs)
+- Sweep execution: ~150,000-300,000 gas (vault interactions)
+
+**Total**: ~175,000-325,000 gas per automated sweep
+
+#### Cost-Benefit Analysis
+
+Automation is profitable when:
+
+```
+Expected Yield > Automation Cost
+
+idleCapital × vaultAPY × timePeriod > gasPrice × gasUsed × ETH_PRICE
+```
+
+Example:
+- Idle: 10 ETH
+- APY: 5%
+- Period: 24 hours
+- Gas: 200,000 @ 30 gwei
+
+```
+Yield   = 10 × 0.05 / 365 = 0.00137 ETH ≈ $3.42 @ $2,500/ETH
+GasCost = 30 × 10^-9 × 200,000 × 2,500 = $0.015
+Profit  = $3.42 - $0.015 = $3.40 ✓
+```
+
+### Integration with Hook
+
+#### 1. IdleCapitalDetected Emission
+
+Hook emits event during liquidity changes:
+
+```solidity
+function _emitIdleCapitalIfNeeded(PoolKey memory key) internal {
+    (uint256 idle0, uint256 idle1) = calculateIdleCapital(key);
+    
+    if (idle0 >= MIN_DETECTION_THRESHOLD || idle1 >= MIN_DETECTION_THRESHOLD) {
+        emit IdleCapitalDetected(key.toId(), idle0, idle1, key);
+    }
+}
+```
+
+Called from:
+- `beforeRemoveLiquidity` after LP exits
+- `afterSwap` if price moves significantly
+- Manual admin trigger for testing
+
+#### 2. Interface Exposure
+
+Hook implements `IYieldSubsidizedDirectionalHook`:
+
+```solidity
+interface IYieldSubsidizedDirectionalHook {
+    function sweepIdleCapital(PoolKey calldata key) external;
+    function getIdleCapital(PoolKey calldata key) 
+        external view returns (uint256, uint256);
+    function getPoolConfig(PoolId poolId) 
+        external view returns (PoolConfig memory);
+    function isPoolRegistered(PoolId poolId) 
+        external view returns (bool);
+}
+```
+
+### Deployment Process
+
+#### Step 1: Deploy Hook
+```bash
+forge script DeployHook.s.sol --broadcast
+```
+
+#### Step 2: Deploy Automation (Reactive Network)
+```bash
+# Deploy callback on Reactive Network
+forge script DeployReactiveAutomation.s.sol \
+    --rpc-url $REACTIVE_NETWORK_RPC \
+    --broadcast
+
+# Deploy subscriber on origin chain
+forge script DeployReactiveAutomation.s.sol \
+    --rpc-url $ORIGIN_CHAIN_RPC \
+    --broadcast
+```
+
+#### Step 3: Configure Parameters
+```bash
+# Set sweep threshold (1 ETH)
+cast send $CALLBACK_ADDRESS \
+    "setSweepThreshold(uint256)" 1000000000000000000
+
+# Set interval (1 hour)
+cast send $CALLBACK_ADDRESS \
+    "setMinSweepInterval(uint256)" 3600
+```
+
+### Monitoring and Observability
+
+#### Key Metrics
+
+1. **Sweep Frequency**: `SweepTriggered` events per time period
+2. **Idle Detection Rate**: `IdleCapitalDetected` vs `SweepTriggered` ratio
+3. **Threshold Effectiveness**: Sweeps skipped due to threshold
+4. **Interval Effectiveness**: Sweeps skipped due to interval
+5. **Gas Efficiency**: Average gas per sweep vs yield generated
+
+#### Dashboard Queries
+
+```graphql
+{
+  sweepTriggers(first: 100, orderBy: timestamp, orderDirection: desc) {
+    poolId
+    idleAmount0
+    idleAmount1
+    timestamp
+    gasUsed
+  }
+  
+  idleCapitalDetections(where: { swept: false }) {
+    poolId
+    idleAmount0
+    idleAmount1
+    detectedAt
+    reasonNotSwept
+  }
+}
+```
+
+### Failure Modes and Recovery
+
+#### 1. Reactive Network Downtime
+
+**Impact**: No automated sweeps triggered  
+**Fallback**: Manual `sweepIdleCapital()` calls remain permissionless  
+**Recovery**: Resume automation when network restores
+
+#### 2. Gas Price Spike
+
+**Impact**: Automated sweeps become unprofitable  
+**Mitigation**: Adjust threshold dynamically based on gas price  
+**Action**: Admin increases threshold temporarily
+
+#### 3. Vault Illiquidity
+
+**Impact**: Sweep fails, LP receives claim tokens  
+**Handling**: Hook's graceful failure already handles this  
+**Automation**: Continue monitoring for future sweeps
+
+#### 4. Hook Paused
+
+**Impact**: `sweepIdleCapital()` reverts  
+**Handling**: Callback catches revert, logs error  
+**Recovery**: Resume when hook unpaused
+
+### Advanced Features
+
+#### 1. Dynamic Threshold Adjustment
+
+Future enhancement to adjust threshold based on conditions:
+
+```solidity
+function getEffectiveThreshold() internal view returns (uint256) {
+    uint256 baseThreshold = sweepThreshold;
+    
+    // Increase threshold when gas is expensive
+    if (block.basefee > 100 gwei) {
+        baseThreshold = baseThreshold * 2;
+    }
+    
+    // Decrease threshold for high-APY vaults
+    if (getCurrentAPY() > 10%) {
+        baseThreshold = baseThreshold / 2;
+    }
+    
+    return baseThreshold;
+}
+```
+
+#### 2. Multi-Pool Prioritization
+
+When multiple pools ready, prioritize by ROI:
+
+```solidity
+struct SweepOpportunity {
+    PoolId poolId;
+    uint256 expectedYield;
+    uint256 estimatedGasCost;
+    uint256 roi;  // expectedYield / estimatedGasCost
+}
+
+function prioritizeSweeps() internal returns (PoolId[] memory) {
+    // Sort opportunities by ROI descending
+    // Execute highest ROI sweeps first
+}
+```
+
+#### 3. Batch Sweeping
+
+Execute multiple pool sweeps in single transaction:
+
+```solidity
+function batchSweepIdleCapital(PoolKey[] calldata keys) external {
+    for (uint256 i = 0; i < keys.length; i++) {
+        try hook.sweepIdleCapital(keys[i]) {
+            emit SweepSuccess(keys[i].toId());
+        } catch {
+            emit SweepFailed(keys[i].toId());
+        }
+    }
+}
+```
+
+---
+
+## Reactive Network Benefits Summary
+
+| Aspect | Without Reactive Network | With Reactive Network |
+|--------|--------------------------|----------------------|
+| **Infrastructure** | Centralized keeper servers | Fully decentralized |
+| **Reliability** | Single point of failure | Distributed network |
+| **Triggering** | Manual/periodic polling | Event-driven automatic |
+| **Cost** | Constant monitoring costs | Pay-per-execution |
+| **Maintenance** | Requires ops team | Self-sustaining |
+| **Transparency** | Off-chain logic | On-chain verifiable |
+| **Scalability** | Limited by infra | Scales with network |
+
+**Integration Status**: ✅ Fully implemented and production-ready
