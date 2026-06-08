@@ -10,6 +10,9 @@ out/
 # Dotenv file
 .env
 
+# Dependencies (installed via forge install)
+lib/
+
 # Kiro spec files (development artifacts)
 .kiro/
 
