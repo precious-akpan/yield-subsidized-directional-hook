@@ -228,7 +228,7 @@ interface IExternalVault {
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/yield-subsidized-directional-hook.git
+git clone https://github.com/precious-akpan/yield-subsidized-directional-hook.git
 cd yield-subsidized-directional-hook
 
 # Install dependencies
@@ -578,9 +578,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact & Support
 
-- **Discord**: [Join our community](https://discord.gg/your-invite)
-- **Twitter**: [@YourProject](https://twitter.com/your-handle)
-- **Email**: security@yourproject.com (for security issues only)
+- **GitHub**: [@precious-akpan](https://github.com/precious-akpan)
+- **Repository**: [yield-subsidized-directional-hook](https://github.com/precious-akpan/yield-subsidized-directional-hook)
+- **Issues**: [Report bugs or request features](https://github.com/precious-akpan/yield-subsidized-directional-hook/issues)
+- **Discussions**: [Ask questions or share ideas](https://github.com/precious-akpan/yield-subsidized-directional-hook/discussions)
+
+For security vulnerabilities, please email: **security@precious-akpan.dev** (or open a private security advisory)
 
 ---
 
@@ -588,6 +591,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for the Uniswap community**
 
-[⭐ Star on GitHub](https://github.com/your-org/yield-subsidized-directional-hook) • [🐛 Report Bug](https://github.com/your-org/yield-subsidized-directional-hook/issues) • [💡 Request Feature](https://github.com/your-org/yield-subsidized-directional-hook/issues)
+[⭐ Star on GitHub](https://github.com/precious-akpan/yield-subsidized-directional-hook) • [🐛 Report Bug](https://github.com/precious-akpan/yield-subsidized-directional-hook/issues) • [💡 Request Feature](https://github.com/precious-akpan/yield-subsidized-directional-hook/issues)
 
 </div>
