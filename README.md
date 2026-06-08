@@ -1,23 +1,17 @@
 # Yield Subsidized Directional Hook
 
-<div align="center">
-
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.26-363636?logo=solidity)](https://soliditylang.org/)
 [![Uniswap v4](https://img.shields.io/badge/Uniswap-v4-FF007A?logo=uniswap)](https://uniswap.org/)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C?logo=ethereum)](https://getfoundry.sh/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**A production-ready Uniswap v4 Hook that protects Liquidity Providers from Impermanent Loss**
-
-[Features](#-features) • [How It Works](#-how-it-works) • [Architecture](#-architecture) • [Installation](#-installation) • [Usage](#-usage) • [Security](#-security) • [Documentation](#-documentation)
-
-</div>
+A production-ready Uniswap v4 Hook that protects Liquidity Providers from Impermanent Loss through directional fee scaling, external yield generation, and automated IL compensation.
 
 ---
 
-## 🎯 Overview
+## Overview
 
-The **Yield Subsidized Directional Hook** is a sophisticated Uniswap v4 hook that fundamentally transforms LP economics by addressing the critical challenge of impermanent loss (IL). Through an innovative three-mechanism approach, this hook creates a sustainable, LP-protective liquidity environment.
+The **Yield Subsidized Directional Hook** is a sophisticated Uniswap v4 hook that addresses the critical challenge of impermanent loss (IL) through an innovative three-mechanism approach, creating a sustainable, LP-protective liquidity environment.
 
 ### The Problem
 
@@ -30,13 +24,13 @@ Traditional AMMs expose liquidity providers to:
 
 This hook implements a closed-loop IL mitigation system:
 
-1. **🎯 Directional Fee Scaling** - Tax toxic arbitrage flow via oracle-based price comparison
-2. **💰 External Yield Generation** - Route idle out-of-range capital to ERC-4626 yield vaults
-3. **🛡️ IL Subsidy Distribution** - Compensate LPs for impermanent loss using accumulated yield
+1. **Directional Fee Scaling** - Tax toxic arbitrage flow via oracle-based price comparison
+2. **External Yield Generation** - Route idle out-of-range capital to ERC-4626 yield vaults
+3. **IL Subsidy Distribution** - Compensate LPs for impermanent loss using accumulated yield
 
 ---
 
-## ✨ Features
+## Features
 
 ### Core Mechanisms
 
@@ -48,7 +42,7 @@ This hook implements a closed-loop IL mitigation system:
 
 - **Asynchronous Capital Management**
   - Flash accounting integration via Uniswap v4 unlock/lock pattern
-  - **Automated capital sweeps via Reactive Network** 🆕
+  - Automated capital sweeps via Reactive Network
   - Permissionless keeper model for decentralized automation
   - ERC-4626 vault compatibility for yield generation
   - Real-time yield tracking and attribution
@@ -67,25 +61,25 @@ This hook implements a closed-loop IL mitigation system:
 
 ### Security & Reliability
 
-- ✅ **Access Control**: Anti-callback spoofing via PoolManager validation
-- ✅ **Reentrancy Protection**: OpenZeppelin guards on all state-changing functions
-- ✅ **Gas Safety**: Limited external calls with fallback behavior
-- ✅ **Oracle Manipulation Resistance**: Staleness checks and sanity bounds
-- ✅ **Fail-Safe Design**: Vault failures never block LP operations
-- ✅ **Emergency Pause**: Admin controls for crisis management
+- Access Control: Anti-callback spoofing via PoolManager validation
+- Reentrancy Protection: OpenZeppelin guards on all state-changing functions
+- Gas Safety: Limited external calls with fallback behavior
+- Oracle Manipulation Resistance: Staleness checks and sanity bounds
+- Fail-Safe Design: Vault failures never block LP operations
+- Emergency Pause: Admin controls for crisis management
 
 ### Developer Experience
 
-- 📦 Modular architecture with clean separation of concerns
-- 🧪 Comprehensive test suite (unit + integration + property tests)
-- 📊 Rich event emission for analytics and monitoring
-- 🔧 Configurable parameters per pool
-- 📚 Extensive NatSpec documentation
-- 🚀 Production-ready with gas optimizations
+- Modular architecture with clean separation of concerns
+- Comprehensive test suite (unit + integration + property tests)
+- Rich event emission for analytics and monitoring
+- Configurable parameters per pool
+- Extensive NatSpec documentation
+- Production-ready with gas optimizations
 
 ---
 
-## 🔧 How It Works
+## How It Works
 
 ### Directional Fee Scaling
 
@@ -160,7 +154,7 @@ Subsidy Calculation:
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Component Overview
 
@@ -173,10 +167,10 @@ YieldSubsidizedDirectionalHook
 ├── IL Calculator (Impermanent loss measurement)
 ├── Subsidy Distributor (Yield allocation to LPs)
 ├── Claim Token System (ERC-1155 for locked capital)
-└── Reactive Network Integration (Automated keeper operations) 🆕
+└── Reactive Network Integration (Automated keeper operations)
 ```
 
-### Reactive Network Automation 🆕
+### Reactive Network Automation
 
 The hook integrates with [Reactive Network](https://reactive.network) for trustless, decentralized automation:
 
@@ -202,11 +196,11 @@ graph TB
 ```
 
 **Benefits:**
-- ✅ No centralized keeper infrastructure required
-- ✅ Event-driven automation (triggers on liquidity changes)
-- ✅ Configurable thresholds and intervals
-- ✅ Cost-efficient (only executes when profitable)
-- ✅ Fully auditable and transparent
+- No centralized keeper infrastructure required
+- Event-driven automation (triggers on liquidity changes)
+- Configurable thresholds and intervals
+- Cost-efficient (only executes when profitable)
+- Fully auditable and transparent
 
 **See:** [Reactive Network Integration Guide](docs/REACTIVE_NETWORK_INTEGRATION.md)
 
@@ -253,7 +247,7 @@ interface IExternalVault {
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 
@@ -305,7 +299,7 @@ forge-std = { git = "https://github.com/foundry-rs/forge-std", version = "1.8.0"
 
 ---
 
-## 🚀 Usage
+## Usage
 
 ### Basic Deployment
 
@@ -355,7 +349,7 @@ hook.sweepIdleCapital(poolKey);
 (uint256 idle0, uint256 idle1) = hook.calculateIdleCapital(poolKey);
 ```
 
-#### Automated Keeper (Reactive Network) 🆕
+#### Automated Keeper (Reactive Network)
 
 Deploy automated keeper contracts for trustless, decentralized capital management:
 
@@ -408,7 +402,7 @@ bool isRegistered = hook.isPoolRegistered(poolId);
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Test Structure
 
@@ -466,11 +460,11 @@ forge test --match-path "test/security/*"
 
 ---
 
-## 🔒 Security
+## Security
 
 ### Audit Status
 
-🚧 **Pre-audit** - This contract has not been formally audited yet. Use at your own risk.
+**Pre-audit** - This contract has not been formally audited yet. Use at your own risk.
 
 ### Security Considerations
 
@@ -492,11 +486,11 @@ forge test --match-path "test/security/*"
 
 ### Bug Bounty
 
-🐛 Bug bounty program details coming soon.
+Bug bounty program details coming soon.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 ### For Users
 
@@ -510,16 +504,11 @@ forge test --match-path "test/security/*"
 - [API Reference](docs/API.md) - Function signatures and interfaces
 - [Integration Guide](docs/INTEGRATION.md) - How to integrate with your protocol
 - [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment checklist
-
-### Specifications
-
-- [Requirements](.kiro/specs/yield-subsidized-directional-hook/requirements.md) - 40 detailed requirements
-- [Design](.kiro/specs/yield-subsidized-directional-hook/design.md) - Technical design document
-- [Tasks](.kiro/specs/yield-subsidized-directional-hook/tasks.md) - Implementation task breakdown
+- [Reactive Network Integration](docs/REACTIVE_NETWORK_INTEGRATION.md) - Automation setup guide
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Project Structure
 
@@ -540,8 +529,7 @@ forge test --match-path "test/security/*"
 ├── script/
 │   ├── Deploy.s.sol
 │   └── Configure.s.sol
-├── docs/
-└── .kiro/specs/
+└── docs/
 ```
 
 ### Commands
@@ -579,7 +567,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ---
 
-## 📊 Performance
+## Performance
 
 ### Gas Benchmarks
 
@@ -602,37 +590,37 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
-### Phase 1: Core Implementation ✅
+### Phase 1: Core Implementation (Complete)
 - [x] Directional fee scaling mechanism
 - [x] Capital sweep with flash accounting
 - [x] IL calculation and subsidy distribution
 - [x] Claim token system
 
-### Phase 2: Automation & Testing 🚧
-- [x] **Reactive Network integration for automated keepers** 🆕
-- [x] **Decentralized capital sweep automation** 🆕
+### Phase 2: Automation & Testing (In Progress)
+- [x] Reactive Network integration for automated keepers
+- [x] Decentralized capital sweep automation
 - [ ] Comprehensive unit test coverage
 - [ ] Integration test scenarios
 - [ ] Security test suite
 - [ ] Gas optimizations
 
-### Phase 3: Audit & Deployment 📅
+### Phase 3: Audit & Deployment (Planned)
 - [ ] External security audit
 - [ ] Bug bounty program
 - [ ] Testnet deployment
 - [ ] Mainnet deployment
 
-### Phase 4: Enhancements 💡
+### Phase 4: Enhancements (Future)
 - [ ] Multi-oracle support (Chainlink, Uniswap TWAP, etc.)
 - [ ] Advanced fee curves (exponential, sigmoid)
 - [ ] LP position NFT integration
-- [x] ~~Keeper incentive mechanism~~ **Reactive Network automation implemented** ✅
+- [x] Keeper incentive mechanism (Reactive Network automation implemented)
 
 ---
 
-## 🤝 Acknowledgments
+## Acknowledgments
 
 - **Uniswap Labs** - For the groundbreaking v4 architecture
 - **Reactive Network** - For decentralized automation infrastructure
@@ -641,27 +629,19 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📞 Contact & Support
+## Contact & Support
 
 - **GitHub**: [@precious-akpan](https://github.com/precious-akpan)
 - **Repository**: [yield-subsidized-directional-hook](https://github.com/precious-akpan/yield-subsidized-directional-hook)
 - **Issues**: [Report bugs or request features](https://github.com/precious-akpan/yield-subsidized-directional-hook/issues)
 - **Discussions**: [Ask questions or share ideas](https://github.com/precious-akpan/yield-subsidized-directional-hook/discussions)
 
-For security vulnerabilities, please email: **security@precious-akpan.dev** (or open a private security advisory)
+For security vulnerabilities, please email: **security@precious-akpan.dev**
 
 ---
-
-<div align="center">
-
-**Built with ❤️ for the Uniswap community**
-
-[⭐ Star on GitHub](https://github.com/precious-akpan/yield-subsidized-directional-hook) • [🐛 Report Bug](https://github.com/precious-akpan/yield-subsidized-directional-hook/issues) • [💡 Request Feature](https://github.com/precious-akpan/yield-subsidized-directional-hook/issues)
-
-</div>
