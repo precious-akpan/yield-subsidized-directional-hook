@@ -4,5 +4,14 @@
       "name": "v1.16.1",
       "rev": "620536fa5277db4e3fd46772d5cbc1ea0696fb43"
     }
+  },
+  "lib/reactive-smart-contract-demos": {
+    "rev": "f1f85ab2a0a8f917b9b37a57c00be2ffc8ad5ad4"
+  },
+  "lib/v4-core": {
+    "tag": {
+      "name": "v4.0.0",
+      "rev": "e50237c43811bd9b526eff40f26772152a42daba"
+    }
   }
 }

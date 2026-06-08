@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {AbstractReactive} from "reactive-lib/AbstractReactive.sol";
+import {AbstractReactive} from "reactive-lib/abstract-base/AbstractReactive.sol";
 import {IYieldSubsidizedDirectionalHook} from "../interfaces/IYieldSubsidizedDirectionalHook.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 

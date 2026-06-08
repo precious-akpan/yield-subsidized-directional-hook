@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {AbstractReactive} from "reactive-lib/AbstractReactive.sol";
-import {IReactive} from "reactive-lib/IReactive.sol";
+import {AbstractReactive} from "reactive-lib/abstract-base/AbstractReactive.sol";
+import {IReactive} from "reactive-lib/interfaces/IReactive.sol";
 
 /// @title ReactiveSubscriber
 /// @notice Contract to subscribe to hook events for automated keeper operations

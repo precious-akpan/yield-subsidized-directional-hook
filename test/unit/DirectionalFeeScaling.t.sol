@@ -106,7 +106,7 @@ contract DirectionalFeeScalingTest is BaseTest {
     }
 
     /// @notice Test paused pool applies baseline fee only (Req 33.3)
-    function test_PausedPoolBaseline FeeOnly() public {
+    function test_PausedPoolBaselineFeeOnly() public {
         // TODO: Pause pool
         // TODO: Execute swap
         // TODO: Verify baseline fee regardless of oracle price
