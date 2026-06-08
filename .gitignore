@@ -15,3 +15,10 @@ docs/
 
 # Kiro spec files (development artifacts)
 .kiro/
+
+# Development artifact files
+PROGRESS_REPORT.md
+SPEC_UPDATES_SUMMARY.md
+REACTIVE_NETWORK_SETUP.md
+TASK_*.md
+TEST_SETUP_COMPLETE.md
