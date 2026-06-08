@@ -1,0 +1,9 @@
+@openzeppelin/contracts/=lib/reactive-smart-contract-demos/lib/openzeppelin-contracts/contracts/
+ds-test/=lib/reactive-smart-contract-demos/lib/openzeppelin-contracts/lib/forge-std/lib/ds-test/src/
+erc4626-tests/=lib/reactive-smart-contract-demos/lib/openzeppelin-contracts/lib/erc4626-tests/
+forge-std/=lib/forge-std/src/
+openzeppelin-contracts/=lib/reactive-smart-contract-demos/lib/openzeppelin-contracts/
+reactive-lib/=lib/reactive-smart-contract-demos/lib/reactive-lib/src/
+reactive-smart-contract-demos/=lib/reactive-smart-contract-demos/src/
+v2-core/=lib/reactive-smart-contract-demos/lib/v2-core/contracts/
+v2-periphery/=lib/reactive-smart-contract-demos/lib/v2-periphery/contracts/

@@ -48,7 +48,8 @@ This hook implements a closed-loop IL mitigation system:
 
 - **Asynchronous Capital Management**
   - Flash accounting integration via Uniswap v4 unlock/lock pattern
-  - Permissionless capital sweeps triggered by keepers
+  - **Automated capital sweeps via Reactive Network** 🆕
+  - Permissionless keeper model for decentralized automation
   - ERC-4626 vault compatibility for yield generation
   - Real-time yield tracking and attribution
 
@@ -128,12 +129,13 @@ sequenceDiagram
 ```
 
 **Execution Steps:**
-1. Keeper identifies idle out-of-range capital
-2. Hook initiates flash accounting via PoolManager.unlock()
-3. Withdraws idle tokens using take operations
-4. Deposits to external ERC-4626 vaults
-5. Tracks vault shares and principal amounts
-6. Settles delta accounting to zero
+1. **Reactive Network monitors** pool liquidity events for idle capital
+2. Keeper (manual or automated) identifies idle out-of-range capital
+3. Hook initiates flash accounting via PoolManager.unlock()
+4. Withdraws idle tokens using take operations
+5. Deposits to external ERC-4626 vaults
+6. Tracks vault shares and principal amounts
+7. Settles delta accounting to zero
 
 ### IL Subsidy Distribution
 
@@ -170,8 +172,43 @@ YieldSubsidizedDirectionalHook
 ├── Capital Sweep Manager (Flash accounting orchestration)
 ├── IL Calculator (Impermanent loss measurement)
 ├── Subsidy Distributor (Yield allocation to LPs)
-└── Claim Token System (ERC-1155 for locked capital)
+├── Claim Token System (ERC-1155 for locked capital)
+└── Reactive Network Integration (Automated keeper operations) 🆕
 ```
+
+### Reactive Network Automation 🆕
+
+The hook integrates with [Reactive Network](https://reactive.network) for trustless, decentralized automation:
+
+```mermaid
+graph TB
+    subgraph "Origin Chain"
+        HOOK[Hook Contract]
+        SUB[ReactiveSubscriber]
+    end
+    
+    subgraph "Reactive Network"
+        RVM[Reactive VM]
+        CB[KeeperCallback]
+    end
+    
+    HOOK -->|Events| SUB
+    SUB -->|Subscribe| RVM
+    RVM -->|Trigger| CB
+    CB -->|sweepIdleCapital| HOOK
+    
+    style RVM fill:#e1f5ff
+    style CB fill:#ffe1e1
+```
+
+**Benefits:**
+- ✅ No centralized keeper infrastructure required
+- ✅ Event-driven automation (triggers on liquidity changes)
+- ✅ Configurable thresholds and intervals
+- ✅ Cost-efficient (only executes when profitable)
+- ✅ Fully auditable and transparent
+
+**See:** [Reactive Network Integration Guide](docs/REACTIVE_NETWORK_INTEGRATION.md)
 
 ### Smart Contract Structure
 
@@ -258,6 +295,10 @@ v4-periphery = { git = "https://github.com/Uniswap/v4-periphery", version = "1.0
 # OpenZeppelin Contracts
 openzeppelin-contracts = { git = "https://github.com/OpenZeppelin/openzeppelin-contracts", version = "5.0.0" }
 
+# Reactive Network (Automation)
+reactive-smart-contract-demos = { git = "https://github.com/Reactive-Network/reactive-smart-contract-demos" }
+reactive-lib = { git = "https://github.com/Reactive-Network/reactive-lib" }
+
 # Testing
 forge-std = { git = "https://github.com/foundry-rs/forge-std", version = "1.8.0" }
 ```
@@ -305,13 +346,40 @@ hook.configurePool(
 
 ### Keeper Operations
 
+#### Manual Keeper
 ```solidity
-// Automated capital sweep (called by keeper bots)
+// Manual capital sweep (called by keeper bots)
 hook.sweepIdleCapital(poolKey);
 
 // Check idle capital before sweep
 (uint256 idle0, uint256 idle1) = hook.calculateIdleCapital(poolKey);
 ```
+
+#### Automated Keeper (Reactive Network) 🆕
+
+Deploy automated keeper contracts for trustless, decentralized capital management:
+
+```bash
+# Deploy Reactive Network automation
+forge script script/DeployReactiveAutomation.s.sol --broadcast
+
+# Configure automation parameters
+cast send $CALLBACK_ADDRESS \
+    "setSweepThreshold(uint256)" 1000000000000000000 \  # 1 token minimum
+    --private-key $PRIVATE_KEY
+
+cast send $CALLBACK_ADDRESS \
+    "setMinSweepInterval(uint256)" 3600 \  # 1 hour minimum
+    --private-key $PRIVATE_KEY
+```
+
+**How it works:**
+- ReactiveSubscriber monitors pool events on origin chain
+- ReactiveKeeperCallback evaluates sweep conditions on Reactive Network
+- Automatically triggers `sweepIdleCapital()` when thresholds are met
+- No centralized infrastructure required
+
+See [Reactive Network Integration Guide](docs/REACTIVE_NETWORK_INTEGRATION.md) for detailed setup.
 
 ### LP Operations
 
@@ -542,7 +610,9 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - [x] IL calculation and subsidy distribution
 - [x] Claim token system
 
-### Phase 2: Testing & Optimization 🚧
+### Phase 2: Automation & Testing 🚧
+- [x] **Reactive Network integration for automated keepers** 🆕
+- [x] **Decentralized capital sweep automation** 🆕
 - [ ] Comprehensive unit test coverage
 - [ ] Integration test scenarios
 - [ ] Security test suite
@@ -558,13 +628,14 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - [ ] Multi-oracle support (Chainlink, Uniswap TWAP, etc.)
 - [ ] Advanced fee curves (exponential, sigmoid)
 - [ ] LP position NFT integration
-- [ ] Keeper incentive mechanism
+- [x] ~~Keeper incentive mechanism~~ **Reactive Network automation implemented** ✅
 
 ---
 
 ## 🤝 Acknowledgments
 
 - **Uniswap Labs** - For the groundbreaking v4 architecture
+- **Reactive Network** - For decentralized automation infrastructure
 - **OpenZeppelin** - For battle-tested smart contract libraries
 - **Foundry** - For the best-in-class development toolkit
 
