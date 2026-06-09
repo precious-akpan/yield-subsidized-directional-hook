@@ -46,6 +46,9 @@ contract IOracleTest is Test {
     /// @notice Test getPrice with custom timestamp
     function test_GetPriceWithCustomTimestamp() public {
         uint256 expectedPrice = 1.5e18;
+        // Use a timestamp that won't underflow (current timestamp minus 100 seconds)
+        // Fast forward time first to ensure we don't underflow at block.timestamp == 0
+        vm.warp(1000);
         uint256 customTimestamp = block.timestamp - 100;
         
         oracle.setPriceWithTimestamp(token0, token1, expectedPrice, customTimestamp);
@@ -88,12 +91,15 @@ contract IOracleTest is Test {
     /// @notice Test stale price detection helper
     function test_StalePriceHelper() public {
         uint256 ageSeconds = 300; // 5 minutes old
+        // Fast forward time first to ensure we don't underflow
+        vm.warp(1000);
         oracle.setStalePrice(token0, token1, 1e18, ageSeconds);
 
         (uint256 price, uint256 timestamp) = oracle.getPrice(token0, token1);
 
         assertEq(price, 1e18, "Price should be 1e18");
-        assertLe(timestamp, block.timestamp - ageSeconds, "Timestamp should be at least ageSeconds old");
+        assertEq(timestamp, block.timestamp - ageSeconds, "Timestamp should be exactly ageSeconds old");
+        assertTrue(timestamp < block.timestamp, "Timestamp should be in the past");
     }
 
     /// @notice Fuzz test: getPrice handles various price values correctly
