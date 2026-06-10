@@ -60,4 +60,17 @@ contract YieldSubsidizedDirectionalHookHelper is YieldSubsidizedDirectionalHook 
     function registerPool(PoolId poolId) external {
         registeredPools[poolId] = true;
     }
+
+    // ============ EXPOSED LP POSITION TRACKING ============
+
+    /// @notice Exposes trackLPPosition for testing
+    /// @dev Calls internal function directly as inheritance allows access
+    function testTrackLPPosition(
+        address lp,
+        PoolId poolId,
+        DataTypes.LPPosition memory position
+    ) external {
+        // Call internal function (accessible via inheritance)
+        return YieldSubsidizedDirectionalHook.trackLPPosition(lp, poolId, position);
+    }
 }

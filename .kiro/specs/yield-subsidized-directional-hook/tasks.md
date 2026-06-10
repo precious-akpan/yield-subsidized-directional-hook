@@ -181,8 +181,8 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test delta balancing
     - _Requirements: 9.1-9.5, 10.1-10.5, 11.1-11.5, 24.1-24.5_
 
-- [ ] 10. Implement IL calculation engine
-  - [ ] 10.1 Create IL calculation function
+- [x] 10. Implement IL calculation engine
+  - [x] 10.1 Create IL calculation function
     - Implement `calculateImpermanentLoss(LPPosition, uint160 currentSqrtPriceX96)` internal function
     - Convert initial and current prices to comparable format
     - Calculate current token amounts from liquidity and tick range
@@ -193,7 +193,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Return IL amounts denominated in both token0 and token1
     - _Requirements: 13.1-13.5_
   
-  - [ ] 10.2 Create position tracking helper
+  - [x] 10.2 Create position tracking helper
     - Implement `trackLPPosition(address lp, PoolId poolId, LPPosition)` internal function
     - Store position data in `lpPositions` mapping
     - Update position count

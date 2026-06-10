@@ -952,6 +952,166 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         return "";
     }
 
+    // ============ LP POSITION TRACKING ============
+
+    /// @notice Tracks or updates LP position data for IL calculation
+    /// @dev Stores position in lpPositions mapping and updates position count if new
+    /// @dev For simplicity, tracks a single aggregate position per LP per pool (index 0)
+    /// @param lp The address of the liquidity provider
+    /// @param poolId The pool identifier
+    /// @param position The LP position data to store
+    /// @custom:requirements Validates: 31.1-31.5
+    function trackLPPosition(
+        address lp,
+        PoolId poolId,
+        DataTypes.LPPosition memory position
+    ) internal virtual {
+        // Validate LP address is not zero
+        if (lp == address(0)) revert Errors.ZeroAddress();
+        
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+        
+        // Check if this is a new position (position count is 0)
+        uint256 currentCount = lpPositionCount[lp][poolId];
+        
+        // Store position data at index 0 (simplified single position per LP per pool)
+        lpPositions[lp][poolId][0] = position;
+        
+        // Update position count if this is the first position for this LP in this pool
+        if (currentCount == 0) {
+            lpPositionCount[lp][poolId] = 1;
+        }
+        
+        // Note: For the simplified implementation, we use a single aggregate position
+        // per LP per pool (index 0). Future enhancements could support multiple positions
+        // by using lpPositionCount to track and store positions at different indices.
+    }
+
+    // ============ IMPERMANENT LOSS CALCULATION ============
+
+    /// @notice Calculates current token amounts from liquidity for a given position
+    /// @dev Uses Uniswap v4's SqrtPriceMath library to compute token amounts
+    /// @param liquidityAmount The liquidity amount in pool units
+    /// @param tickLower The lower tick of the position
+    /// @param tickUpper The upper tick of the position
+    /// @param currentSqrtPriceX96 The current sqrt price of the pool
+    /// @return amount0 Current amount of token0 in the position
+    /// @return amount1 Current amount of token1 in the position
+    /// @custom:requirements Validates: 13.1-13.5
+    function calculateTokenAmounts(
+        uint256 liquidityAmount,
+        int24 tickLower,
+        int24 tickUpper,
+        uint160 currentSqrtPriceX96
+    ) internal pure virtual returns (uint256 amount0, uint256 amount1) {
+        // Get sqrt prices at tick boundaries
+        uint160 sqrtPriceLowerX96 = TickMath.getSqrtPriceAtTick(tickLower);
+        uint160 sqrtPriceUpperX96 = TickMath.getSqrtPriceAtTick(tickUpper);
+        
+        // Determine position relative to current price
+        if (currentSqrtPriceX96 <= sqrtPriceLowerX96) {
+            // Current price below range - position is entirely token0
+            amount0 = SqrtPriceMath.getAmount0Delta(
+                sqrtPriceLowerX96,
+                sqrtPriceUpperX96,
+                uint128(liquidityAmount),
+                false
+            );
+            amount1 = 0;
+        } else if (currentSqrtPriceX96 >= sqrtPriceUpperX96) {
+            // Current price above range - position is entirely token1
+            amount0 = 0;
+            amount1 = SqrtPriceMath.getAmount1Delta(
+                sqrtPriceLowerX96,
+                sqrtPriceUpperX96,
+                uint128(liquidityAmount),
+                false
+            );
+        } else {
+            // Current price within range - position has both tokens
+            amount0 = SqrtPriceMath.getAmount0Delta(
+                currentSqrtPriceX96,
+                sqrtPriceUpperX96,
+                uint128(liquidityAmount),
+                false
+            );
+            amount1 = SqrtPriceMath.getAmount1Delta(
+                sqrtPriceLowerX96,
+                currentSqrtPriceX96,
+                uint128(liquidityAmount),
+                false
+            );
+        }
+        
+        return (amount0, amount1);
+    }
+
+    /// @notice Calculates impermanent loss for an LP position
+    /// @dev Compares hold value (initial tokens held) vs position value at current price
+    /// @dev Returns IL denominated in both token0 and token1 for flexible compensation
+    /// @param position The LP position data with initial deposit information
+    /// @param currentSqrtPriceX96 The current sqrt price of the pool
+    /// @return ilToken0 Impermanent loss amount in token0 terms
+    /// @return ilToken1 Impermanent loss amount in token1 terms
+    /// @custom:requirements Validates: 13.1-13.5
+    function calculateImpermanentLoss(
+        DataTypes.LPPosition memory position,
+        uint160 currentSqrtPriceX96
+    ) internal pure virtual returns (uint256 ilToken0, uint256 ilToken1) {
+        // Convert prices to comparable format (18 decimal precision)
+        uint256 currentPrice = sqrtPriceX96ToPrice(currentSqrtPriceX96);
+        
+        // Calculate current token amounts in the position
+        (uint256 currentToken0, uint256 currentToken1) = calculateTokenAmounts(
+            position.liquidityAmount,
+            position.tickLower,
+            position.tickUpper,
+            currentSqrtPriceX96
+        );
+        
+        // Calculate hold value at current price (what LP would have if they just held tokens)
+        // holdValue = token0Initial + (token1Initial converted to token0 at current price)
+        // currentPrice is in token1/token0 with 18 decimals, so:
+        // token1Initial * 1e18 / currentPrice gives token0 equivalent
+        uint256 holdValueInToken0 = position.token0Initial + 
+            FullMath.mulDiv(position.token1Initial, PRICE_SCALE, currentPrice);
+        
+        // Calculate position value at current price
+        // positionValue = currentToken0 + (currentToken1 converted to token0 at current price)
+        uint256 positionValueInToken0 = currentToken0 + 
+            FullMath.mulDiv(currentToken1, PRICE_SCALE, currentPrice);
+        
+        // IL is the difference (if positive, LP has loss)
+        if (holdValueInToken0 > positionValueInToken0) {
+            uint256 ilInToken0 = holdValueInToken0 - positionValueInToken0;
+            
+            // Distribute IL proportionally between token0 and token1
+            // Use the current price ratio to determine the split
+            // priceRatio = currentPrice / (currentPrice + 1e18)
+            // This gives the proportion that should be in token1
+            uint256 denominator = currentPrice + PRICE_SCALE;
+            uint256 token1Proportion = FullMath.mulDiv(currentPrice, PRICE_SCALE, denominator);
+            
+            // Calculate IL in token0 terms (remaining after token1 proportion)
+            ilToken0 = FullMath.mulDiv(ilInToken0, (PRICE_SCALE - token1Proportion), PRICE_SCALE);
+            
+            // Calculate IL in token1 terms
+            // Convert the token1 portion of IL from token0 terms to token1 terms
+            uint256 ilToken1InToken0Terms = ilInToken0 - ilToken0;
+            ilToken1 = FullMath.mulDiv(ilToken1InToken0Terms, currentPrice, PRICE_SCALE);
+        } else {
+            // No IL if position is profitable (negative IL)
+            // Return zero for subsidy purposes per requirement 13.4
+            ilToken0 = 0;
+            ilToken1 = 0;
+        }
+        
+        return (ilToken0, ilToken1);
+    }
+
     // ============ EVENTS ============
 
     /// @notice Emitted when idle capital is swept to external vaults
