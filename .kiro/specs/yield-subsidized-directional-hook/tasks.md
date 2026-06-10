@@ -133,7 +133,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test paused pool behavior
     - _Requirements: 5.1-5.5, 6.1-6.5, 7.1-7.5_
 
-- [ ] 7. Checkpoint - Verify swap fee mechanism
+- [x] 7. Checkpoint - Verify swap fee mechanism
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement idle capital detection
