@@ -294,8 +294,9 @@ contract LPPositionTrackingTest is BaseTest {
         token0Initial = bound(token0Initial, 1, type(uint128).max);
         token1Initial = bound(token1Initial, 1, type(uint128).max);
         sqrtPriceX96Initial = uint160(bound(sqrtPriceX96Initial, 1, type(uint160).max));
-        tickLower = int24(bound(int256(tickLower), -887272, 887272));
-        tickUpper = int24(bound(int256(tickUpper), tickLower + 1, 887272));
+        // Ensure tickLower has room for tickUpper to be at least tickLower + 1
+        tickLower = int24(bound(int256(tickLower), -887272, 887271));
+        tickUpper = int24(bound(int256(tickUpper), int256(tickLower) + 1, 887272));
         liquidityAmount = bound(liquidityAmount, 1, type(uint128).max);
         
         DataTypes.LPPosition memory position = DataTypes.LPPosition({

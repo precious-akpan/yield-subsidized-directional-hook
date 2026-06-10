@@ -129,6 +129,34 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         uint256 deviation
     );
 
+    /// @notice Emitted when a pool configuration is updated
+    /// @param poolId The unique identifier of the pool
+    /// @param oracle The oracle contract address
+    /// @param vault0 The vault contract address for token0
+    /// @param vault1 The vault contract address for token1
+    /// @param baseFeeBps The baseline fee in basis points
+    /// @param maxFeeMultiplier The maximum fee multiplier
+    /// @param deviationThresholdBps The price deviation threshold
+    event PoolConfigured(
+        PoolId indexed poolId,
+        address oracle,
+        address vault0,
+        address vault1,
+        uint24 baseFeeBps,
+        uint24 maxFeeMultiplier,
+        uint24 deviationThresholdBps
+    );
+
+    /// @notice Emitted when a pool is paused
+    /// @param poolId The unique identifier of the paused pool
+    /// @param timestamp The timestamp when the pool was paused
+    event PoolPaused(PoolId indexed poolId, uint256 timestamp);
+
+    /// @notice Emitted when a pool is unpaused
+    /// @param poolId The unique identifier of the unpaused pool
+    /// @param timestamp The timestamp when the pool was unpaused
+    event PoolUnpaused(PoolId indexed poolId, uint256 timestamp);
+
     // ============ CONSTRUCTOR ============
 
     /// @notice Initializes the hook with PoolManager reference
@@ -153,6 +181,128 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         owner = newOwner;
 
         emit OwnershipTransferred(previousOwner, newOwner);
+    }
+
+    /// @notice Configures pool parameters including oracle, vaults, and fee scaling
+    /// @dev Can only be called by the owner with onlyOwner and nonReentrant modifiers
+    /// @dev Validates all inputs before storing configuration
+    /// @param poolId The unique identifier of the pool to configure
+    /// @param config The PoolConfig struct containing oracle, vaults, and fee parameters
+    /// @custom:requirements Validates: 19.1-19.5, 20.1-20.5, 21.1-21.5, 22.1-22.5
+    function configurePool(PoolId poolId, DataTypes.PoolConfig calldata config)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+
+        // Validate oracle implements IOracle interface (non-zero check)
+        if (config.oracle != address(0)) {
+            // Try to call getPrice to verify oracle interface
+            // Using try-catch with gas limit to detect if oracle is a valid contract
+            try IOracle(config.oracle).getPrice(address(0), address(0)) returns (uint256, uint256) {
+                // Oracle call succeeded - it appears to implement the interface
+            } catch {
+                // Oracle call failed - likely doesn't implement IOracle or reverts
+                revert Errors.InvalidOracle(config.oracle);
+            }
+        }
+
+        // Validate vault0 implements IExternalVault interface if non-zero
+        if (config.vault0 != address(0)) {
+            // Validate vault implements required interface by checking asset()
+            try IExternalVault(config.vault0).asset() returns (address) {
+                // Vault must be retrievable in the pool key to validate asset match
+                // For now, we store this for later validation during sweeps
+            } catch {
+                revert Errors.InvalidVault(config.vault0);
+            }
+        }
+
+        // Validate vault1 implements IExternalVault interface if non-zero
+        if (config.vault1 != address(0)) {
+            // Validate vault implements required interface by checking asset()
+            try IExternalVault(config.vault1).asset() returns (address) {
+                // Vault must be retrievable in the pool key to validate asset match
+                // For now, we store this for later validation during sweeps
+            } catch {
+                revert Errors.InvalidVault(config.vault1);
+            }
+        }
+
+        // Validate fee parameters: maxFeeMultiplier >= baseFeeBps
+        if (config.maxFeeMultiplier < config.baseFeeBps) {
+            revert Errors.InvalidConfiguration("maxFeeMultiplier must be >= baseFeeBps");
+        }
+
+        // Validate fee parameters are within reasonable bounds
+        // baseFeeBps should be <= 10000 (100%)
+        if (config.baseFeeBps > 10000) {
+            revert Errors.InvalidConfiguration("baseFeeBps exceeds 100%");
+        }
+
+        // maxFeeMultiplier should be <= 100000 (1000%)
+        if (config.maxFeeMultiplier > 100000) {
+            revert Errors.InvalidConfiguration("maxFeeMultiplier exceeds 1000%");
+        }
+
+        // deviationThresholdBps should be > 0 and <= 10000
+        if (config.deviationThresholdBps == 0 || config.deviationThresholdBps > 10000) {
+            revert Errors.InvalidConfiguration("deviationThresholdBps must be between 1 and 10000");
+        }
+
+        // Store configuration in poolConfigs mapping
+        poolConfigs[poolId] = config;
+
+        // Emit PoolConfigured event
+        emit PoolConfigured(
+            poolId,
+            config.oracle,
+            config.vault0,
+            config.vault1,
+            config.baseFeeBps,
+            config.maxFeeMultiplier,
+            config.deviationThresholdBps
+        );
+    }
+
+    /// @notice Pauses a pool, disabling directional fee scaling and capital sweeps
+    /// @dev Can only be called by the owner
+    /// @dev Sets isPaused flag in pool configuration
+    /// @param poolId The unique identifier of the pool to pause
+    /// @custom:requirements Validates: 22.1-22.5, 33.1-33.5
+    function pausePool(PoolId poolId) external onlyOwner {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+
+        // Update isPaused flag
+        poolConfigs[poolId].isPaused = true;
+
+        // Emit PoolPaused event
+        emit PoolPaused(poolId, block.timestamp);
+    }
+
+    /// @notice Unpauses a pool, restoring directional fee scaling and capital sweeps
+    /// @dev Can only be called by the owner
+    /// @dev Clears isPaused flag in pool configuration
+    /// @param poolId The unique identifier of the pool to unpause
+    /// @custom:requirements Validates: 22.1-22.5, 33.1-33.5
+    function unpausePool(PoolId poolId) external onlyOwner {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+
+        // Update isPaused flag
+        poolConfigs[poolId].isPaused = false;
+
+        // Emit PoolUnpaused event
+        emit PoolUnpaused(poolId, block.timestamp);
     }
 
     // ============ HOOK PERMISSIONS ============
