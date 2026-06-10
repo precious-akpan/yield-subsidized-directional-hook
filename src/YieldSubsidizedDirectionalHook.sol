@@ -17,6 +17,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {Errors} from "./libraries/Errors.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
+import {SqrtPriceMath} from "v4-core/libraries/SqrtPriceMath.sol";
+import {TickMath} from "v4-core/libraries/TickMath.sol";
 
 /// @title YieldSubsidizedDirectionalHook
 /// @notice Uniswap v4 Hook that protects LPs from Impermanent Loss through directional fee scaling,
@@ -711,6 +713,91 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         }
         
         return estimatedPrice;
+    }
+
+    // ============ IDLE CAPITAL DETECTION ============
+
+    /// @notice Calculates the amount of idle (out-of-range) capital for a pool
+    /// @dev Uses external position tracking approach for gas efficiency
+    /// @dev Position data must be provided by off-chain indexers or external contracts
+    /// @param key The PoolKey identifying the pool
+    /// @param tickLowers Array of lower tick bounds for LP positions
+    /// @param tickUppers Array of upper tick bounds for LP positions
+    /// @param liquidityAmounts Array of liquidity amounts for each position
+    /// @return idleAmount0 Total idle amount of token0
+    /// @return idleAmount1 Total idle amount of token1
+    /// @custom:requirements Validates: 8.1-8.5
+    function calculateIdleCapital(
+        PoolKey calldata key,
+        int24[] calldata tickLowers,
+        int24[] calldata tickUppers,
+        uint128[] calldata liquidityAmounts
+    ) public view virtual returns (uint256 idleAmount0, uint256 idleAmount1) {
+        // Validate input arrays have matching lengths
+        if (tickLowers.length != tickUppers.length || tickLowers.length != liquidityAmounts.length) {
+            revert Errors.InvalidConfiguration("Position array lengths must match");
+        }
+        
+        // Get pool ID and validate pool is registered
+        PoolId poolId = key.toId();
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+        
+        // Get current active tick from pool's Slot0
+        (uint160 sqrtPriceX96, int24 currentTick,,) = StateLibrary.getSlot0(poolManager, poolId);
+        
+        // Iterate through provided positions to identify out-of-range liquidity
+        for (uint256 i = 0; i < tickLowers.length; i++) {
+            int24 tickLower = tickLowers[i];
+            int24 tickUpper = tickUppers[i];
+            uint128 liquidity = liquidityAmounts[i];
+            
+            // Skip if liquidity is zero
+            if (liquidity == 0) {
+                continue;
+            }
+            
+            // Check if position is out of range
+            // Position is in-range if: tickLower <= currentTick < tickUpper
+            bool isInRange = (tickLower <= currentTick) && (currentTick < tickUpper);
+            
+            if (!isInRange) {
+                // Position is out of range - calculate token amounts
+                // Use TickMath to get sqrt prices at tick boundaries
+                uint160 sqrtPriceLowerX96 = TickMath.getSqrtPriceAtTick(tickLower);
+                uint160 sqrtPriceUpperX96 = TickMath.getSqrtPriceAtTick(tickUpper);
+                
+                // Calculate token amounts based on position location relative to current price
+                if (currentTick < tickLower) {
+                    // Position is entirely in token0 (above current price)
+                    // Calculate amount0 using the position's tick range
+                    uint256 amount0 = SqrtPriceMath.getAmount0Delta(
+                        sqrtPriceLowerX96,
+                        sqrtPriceUpperX96,
+                        liquidity,
+                        true // round up for conservative estimate
+                    );
+                    idleAmount0 += amount0;
+                    // amount1 is 0 for positions above current price
+                } else {
+                    // currentTick >= tickUpper
+                    // Position is entirely in token1 (below current price)
+                    // Calculate amount1 using the position's tick range
+                    uint256 amount1 = SqrtPriceMath.getAmount1Delta(
+                        sqrtPriceLowerX96,
+                        sqrtPriceUpperX96,
+                        liquidity,
+                        true // round up for conservative estimate
+                    );
+                    idleAmount1 += amount1;
+                    // amount0 is 0 for positions below current price
+                }
+            }
+            // If in-range, position is active - skip (not idle)
+        }
+        
+        return (idleAmount0, idleAmount1);
     }
 
     // ============ MODIFIERS ============

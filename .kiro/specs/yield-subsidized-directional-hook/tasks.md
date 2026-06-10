@@ -137,7 +137,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement idle capital detection
-  - [ ] 8.1 Create idle capital calculation function
+  - [x] 8.1 Create idle capital calculation function
     - Implement `calculateIdleCapital(PoolKey)` public view function
     - Query current active tick from pool's Slot0
     - Iterate through LP positions to identify out-of-range liquidity
