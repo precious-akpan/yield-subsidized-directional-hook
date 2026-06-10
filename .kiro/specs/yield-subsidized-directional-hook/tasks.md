@@ -8,7 +8,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
 
 ## Tasks
 
-- [ ] 1. Set up core interfaces and type definitions
+- [x] 1. Set up core interfaces and type definitions
   - [x] 1.1 Create IOracle interface
     - Define `getPrice(address token0, address token1)` function returning price and timestamp
     - Add interface documentation explaining manipulation resistance requirements
@@ -136,7 +136,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
 - [x] 7. Checkpoint - Verify swap fee mechanism
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement idle capital detection
+- [x] 8. Implement idle capital detection
   - [x] 8.1 Create idle capital calculation function
     - Implement `calculateIdleCapital(PoolKey)` public view function
     - Query current active tick from pool's Slot0
@@ -152,7 +152,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - _Requirements: 8.1-8.5_
 
 - [x] 9. Implement flash accounting for capital sweeps
-  - [~] 9.1 Implement sweepIdleCapital function
+  - [x] 9.1 Implement sweepIdleCapital function
     - Add public visibility and `nonReentrant` modifier
     - Validate pool is registered and not paused
     - Calculate idle capital amounts using `calculateIdleCapital`
