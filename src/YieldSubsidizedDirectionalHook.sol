@@ -926,21 +926,17 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         pool.vaultShares0 += shares0;
         pool.vaultShares1 += shares1;
         
-        // Settle deltas using poolManager.settle()
-        // Since we took tokens and deposited to vaults (not returning to pool),
-        // we need to settle the deltas by paying the pool manager
-        // The settle function will deduct tokens from this contract to balance the take operations
+        // Settle deltas using poolManager.mint()
+        // When we take() tokens and deposit them to vaults (not returning to pool),
+        // we need to balance the delta accounting to zero.
+        // Using mint() converts the negative delta (debt from take) into ERC6909 claims
+        // owned by this hook, effectively settling the debt WITHOUT returning physical tokens.
+        // This keeps the tokens in the vault while maintaining proper accounting.
         if (amount0 > 0) {
-            // Transfer tokens to pool manager to settle the delta
-            IERC20Token token0 = IERC20Token(Currency.unwrap(key.currency0));
-            require(token0.transfer(address(poolManager), amount0), "Token0 transfer failed");
-            poolManager.settle();
+            poolManager.mint(address(this), key.currency0.toId(), amount0);
         }
         if (amount1 > 0) {
-            // Transfer tokens to pool manager to settle the delta
-            IERC20Token token1 = IERC20Token(Currency.unwrap(key.currency1));
-            require(token1.transfer(address(poolManager), amount1), "Token1 transfer failed");
-            poolManager.settle();
+            poolManager.mint(address(this), key.currency1.toId(), amount1);
         }
         
         // Emit CapitalSwept event with amounts and vault shares

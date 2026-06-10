@@ -161,7 +161,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Call `poolManager.unlock(data)` to trigger flash accounting
     - _Requirements: 9.1-9.5, 10.1, 26.1-26.5, 33.2_
   
-  - [ ] 9.2 Implement unlockCallback for capital sweep
+  - [x] 9.2 Implement unlockCallback for capital sweep
     - Validate caller is poolManager
     - Decode sweep parameters from callback data
     - Use `poolManager.take()` to withdraw idle token amounts
