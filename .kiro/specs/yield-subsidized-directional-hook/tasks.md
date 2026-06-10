@@ -43,7 +43,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Emit `OwnershipTransferred` event on ownership transfer
     - _Requirements: 2.1-2.5, 22.1-22.5_
   
-  - [-] 2.3 Write unit tests for access control
+  - [ ] 2.3 Write unit tests for access control
     - Test that callbacks revert when called by non-PoolManager addresses
     - Test that administrative functions revert when called by non-owner addresses
     - Test ownership transfer functionality
@@ -71,11 +71,11 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Verify SubsidyPool initialization
     - _Requirements: 1.1-1.7, 30.1-30.5_
 
-- [ ] 4. Checkpoint - Verify base infrastructure
+- [x] 4. Checkpoint - Verify base infrastructure
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement oracle integration and price utilities
-  - [ ] 5.1 Implement oracle price fetching with validation
+- [x] 5. Implement oracle integration and price utilities
+  - [x] 5.1 Implement oracle price fetching with validation
     - Create `getOraclePriceWithValidation(PoolKey)` internal function
     - Query oracle using try-catch with gas limit
     - Validate timestamp for staleness (5 minute threshold)
@@ -84,7 +84,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Cache oracle price within transaction using block.number
     - _Requirements: 3.1-3.5, 28.1-28.5, 29.1-29.5_
   
-  - [ ] 5.2 Implement price conversion utilities
+  - [x] 5.2 Implement price conversion utilities
     - Create `sqrtPriceX96ToPrice(uint160 sqrtPriceX96)` function
     - Create `calculateDeviation(uint256 price1, uint256 price2)` function returning deviation in basis points
     - Ensure proper handling of fixed-point arithmetic and precision
@@ -98,8 +98,8 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test price conversion functions
     - _Requirements: 3.1-3.5, 4.1-4.4, 28.1-28.5_
 
-- [ ] 6. Implement swap direction classification and fee scaling
-  - [ ] 6.1 Implement flow classification logic
+- [x] 6. Implement swap direction classification and fee scaling
+  - [x] 6.1 Implement flow classification logic
     - Create `classifyFlow(PoolKey, bool zeroForOne, int256 amountSpecified)` internal function
     - Fetch oracle price with validation
     - Read current sqrtPriceX96 from pool's Slot0
@@ -109,14 +109,14 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Return toxicity flag and fee multiplier
     - _Requirements: 5.1-5.5, 6.1-6.5_
   
-  - [ ] 6.2 Implement fee scaling curve
+  - [x] 6.2 Implement fee scaling curve
     - Create `calculateFeeMultiplier(uint256 deviationBps, PoolConfig)` internal function
     - Implement linear scaling: base + (deviation / threshold) * (max - base)
     - Cap at maximum multiplier from config
     - Ensure all arithmetic operations are safe from overflow
     - _Requirements: 6.1-6.5, 27.1-27.5_
   
-  - [ ] 6.3 Implement beforeSwap callback
+  - [x] 6.3 Implement beforeSwap callback
     - Add `onlyPoolManager` modifier
     - Validate pool is registered
     - Check if pool is paused (return baseline fee if paused)

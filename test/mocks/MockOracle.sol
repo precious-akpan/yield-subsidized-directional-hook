@@ -19,6 +19,11 @@ contract MockOracle {
     }
 
     /// @notice Set price with custom timestamp
+    function setPrice(address token0, address token1, uint256 price, uint256 timestamp_) external {
+        prices[token0][token1] = PriceData({price: price, timestamp: timestamp_});
+    }
+
+    /// @notice Set price with custom timestamp (alternative method name for compatibility)
     function setPriceWithTimestamp(address token0, address token1, uint256 price, uint256 timestamp_) external {
         prices[token0][token1] = PriceData({price: price, timestamp: timestamp_});
     }
@@ -53,6 +58,8 @@ contract MockOracle {
 
     /// @notice Helper to set stale price (old timestamp)
     function setStalePrice(address token0, address token1, uint256 price, uint256 ageSeconds) external {
-        prices[token0][token1] = PriceData({price: price, timestamp: block.timestamp - ageSeconds});
+        // Handle edge case where block.timestamp might be less than ageSeconds (in tests)
+        uint256 timestamp = block.timestamp > ageSeconds ? block.timestamp - ageSeconds : 0;
+        prices[token0][token1] = PriceData({price: price, timestamp: timestamp});
     }
 }

@@ -3,18 +3,23 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
-import {ReactiveKeeperCallback} from "../src/automation/ReactiveKeeperCallback.sol";
-import {ReactiveSubscriber} from "../src/automation/ReactiveSubscriber.sol";
+// TODO: Uncomment when automation contracts are implemented (Task 21)
+// import {ReactiveKeeperCallback} from "../src/automation/ReactiveKeeperCallback.sol";
+// import {ReactiveSubscriber} from "../src/automation/ReactiveSubscriber.sol";
 
 /// @title DeployReactiveAutomation
 /// @notice Script to deploy Reactive Network automation contracts
 /// @dev Deploy callback on Reactive Network, subscriber on origin chain
+/// @dev TODO: Implement in Task 21 - currently placeholder
 contract DeployReactiveAutomation is Script {
     // Default configuration values
     uint256 constant DEFAULT_SWEEP_THRESHOLD = 1 ether; // 1 token minimum
     uint256 constant DEFAULT_SWEEP_INTERVAL = 1 hours; // Minimum 1 hour between sweeps
 
-    function run() external {
+    function run() external pure {
+        revert("DeployReactiveAutomation: Not yet implemented. See Task 21.");
+        
+        /* TODO: Uncomment when automation contracts are implemented
         // Load environment variables
         address reactiveService = vm.envAddress("REACTIVE_SERVICE_ADDRESS");
         address hookAddress = vm.envAddress("HOOK_ADDRESS");
@@ -57,5 +62,6 @@ contract DeployReactiveAutomation is Script {
         console2.log("Sweep Threshold:", sweepThreshold);
         console2.log("Sweep Interval:", sweepInterval, "seconds");
         console2.log("========================\n");
+        */
     }
 }
