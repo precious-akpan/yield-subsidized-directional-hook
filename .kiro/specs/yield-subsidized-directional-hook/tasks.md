@@ -151,7 +151,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test calculation with mixed range positions
     - _Requirements: 8.1-8.5_
 
-- [ ] 9. Implement flash accounting for capital sweeps
+- [x] 9. Implement flash accounting for capital sweeps
   - [ ] 9.1 Implement sweepIdleCapital function
     - Add public visibility and `nonReentrant` modifier
     - Validate pool is registered and not paused

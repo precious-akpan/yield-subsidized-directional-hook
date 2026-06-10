@@ -49,6 +49,15 @@ library Errors {
     /// @param poolId The paused pool identifier
     error PoolPaused(bytes32 poolId);
 
+    /// @notice Thrown when attempting to perform a restricted operation on a paused pool
+    error Paused();
+
+    /// @notice Thrown when a vault deposit operation fails
+    error VaultDepositFailed();
+
+    /// @notice Thrown when attempting to sweep capital below the minimum threshold
+    error BelowMinimumThreshold();
+
     // ========== CAPITAL SWEEP ERRORS ==========
 
     /// @notice Thrown when attempting to sweep capital below the minimum threshold

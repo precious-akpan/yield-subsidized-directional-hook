@@ -17,8 +17,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {DataTypes} from "./libraries/DataTypes.sol";
 import {Errors} from "./libraries/Errors.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
+import {IExternalVault} from "./interfaces/IExternalVault.sol";
 import {SqrtPriceMath} from "v4-core/libraries/SqrtPriceMath.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
+import {IERC20 as IERC20Token} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title YieldSubsidizedDirectionalHook
 /// @notice Uniswap v4 Hook that protects LPs from Impermanent Loss through directional fee scaling,
@@ -799,6 +801,178 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         
         return (idleAmount0, idleAmount1);
     }
+
+    // ============ CAPITAL SWEEP FUNCTIONS ============
+
+    /// @notice Sweeps idle out-of-range capital to external yield vaults
+    /// @dev Permissionless function callable by anyone (typically automated keepers)
+    /// @param key The PoolKey identifying the pool to sweep
+    /// @custom:requirements Validates: 9.1-9.5, 10.1, 26.1-26.5, 33.2
+    function sweepIdleCapital(
+        PoolKey calldata key,
+        int24[] calldata tickLowers,
+        int24[] calldata tickUppers,
+        uint128[] calldata liquidityAmounts
+    ) external nonReentrant {
+        PoolId poolId = key.toId();
+        
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+        
+        // Check if pool is paused
+        DataTypes.PoolConfig memory config = poolConfigs[poolId];
+        if (config.isPaused) {
+            revert Errors.Paused();
+        }
+        
+        // Calculate idle capital amounts
+        (uint256 idleAmount0, uint256 idleAmount1) = calculateIdleCapital(
+            key,
+            tickLowers,
+            tickUppers,
+            liquidityAmounts
+        );
+        
+        // Validate amounts exceed minimum sweep threshold
+        // At least one token must meet the threshold
+        if (idleAmount0 < 0.1 ether && idleAmount1 < 0.1 ether) {
+            revert Errors.BelowMinimumThreshold();
+        }
+        
+        // Encode sweep parameters for unlock callback
+        bytes memory data = abi.encode(
+            poolId,
+            key,
+            idleAmount0,
+            idleAmount1
+        );
+        
+        // Call poolManager.unlock() to trigger flash accounting
+        poolManager.unlock(data);
+    }
+
+    /// @notice Unlock callback for capital sweep flash accounting
+    /// @dev Called by PoolManager during unlock() execution
+    /// @param data Encoded sweep parameters (poolId, key, amounts)
+    /// @return Empty bytes (required by IUnlockCallback interface)
+    /// @custom:requirements Validates: 10.1-10.5, 11.1-11.5, 12.1-12.5, 24.1-24.5, 29.1-29.5
+    function unlockCallback(bytes calldata data) external returns (bytes memory) {
+        // Validate caller is poolManager
+        if (msg.sender != address(poolManager)) {
+            revert Errors.UnauthorizedCaller();
+        }
+        
+        // Decode sweep parameters from callback data
+        (
+            PoolId poolId,
+            PoolKey memory key,
+            uint256 amount0,
+            uint256 amount1
+        ) = abi.decode(data, (PoolId, PoolKey, uint256, uint256));
+        
+        DataTypes.PoolConfig memory config = poolConfigs[poolId];
+        uint256 shares0;
+        uint256 shares1;
+        
+        // Use poolManager.take() to withdraw idle token amounts
+        if (amount0 > 0) {
+            poolManager.take(key.currency0, address(this), amount0);
+            
+            // Approve vault contract for token0 transfer and deposit
+            if (config.vault0 != address(0)) {
+                address token0Address = Currency.unwrap(key.currency0);
+                IERC20Token token0 = IERC20Token(token0Address);
+                
+                // Approve vault for token transfer
+                require(token0.approve(config.vault0, amount0), "Token0 approve failed");
+                
+                // Call vault deposit() function with gas limit
+                try IExternalVault(config.vault0).deposit{gas: 150000}(amount0, address(this)) returns (uint256 _shares0) {
+                    shares0 = _shares0;
+                } catch {
+                    // If vault deposit fails, revert the entire sweep
+                    revert Errors.VaultDepositFailed();
+                }
+            }
+        }
+        
+        if (amount1 > 0) {
+            poolManager.take(key.currency1, address(this), amount1);
+            
+            // Approve vault contract for token1 transfer and deposit
+            if (config.vault1 != address(0)) {
+                address token1Address = Currency.unwrap(key.currency1);
+                IERC20Token token1 = IERC20Token(token1Address);
+                
+                // Approve vault for token transfer
+                require(token1.approve(config.vault1, amount1), "Token1 approve failed");
+                
+                // Call vault deposit() function with gas limit
+                try IExternalVault(config.vault1).deposit{gas: 150000}(amount1, address(this)) returns (uint256 _shares1) {
+                    shares1 = _shares1;
+                } catch {
+                    // If vault deposit fails, revert the entire sweep
+                    revert Errors.VaultDepositFailed();
+                }
+            }
+        }
+        
+        // Update SubsidyPool accounting (principal and vault shares)
+        DataTypes.SubsidyPool storage pool = subsidyPools[poolId];
+        pool.totalToken0Principal += amount0;
+        pool.totalToken1Principal += amount1;
+        pool.vaultShares0 += shares0;
+        pool.vaultShares1 += shares1;
+        
+        // Settle deltas using poolManager.settle()
+        // Since we took tokens and deposited to vaults (not returning to pool),
+        // we need to settle the deltas by paying the pool manager
+        // The settle function will deduct tokens from this contract to balance the take operations
+        if (amount0 > 0) {
+            // Transfer tokens to pool manager to settle the delta
+            IERC20Token token0 = IERC20Token(Currency.unwrap(key.currency0));
+            require(token0.transfer(address(poolManager), amount0), "Token0 transfer failed");
+            poolManager.settle();
+        }
+        if (amount1 > 0) {
+            // Transfer tokens to pool manager to settle the delta
+            IERC20Token token1 = IERC20Token(Currency.unwrap(key.currency1));
+            require(token1.transfer(address(poolManager), amount1), "Token1 transfer failed");
+            poolManager.settle();
+        }
+        
+        // Emit CapitalSwept event with amounts and vault shares
+        emit CapitalSwept(
+            poolId,
+            amount0,
+            amount1,
+            shares0,
+            shares1,
+            tx.origin // The original caller who triggered the sweep
+        );
+        
+        return "";
+    }
+
+    // ============ EVENTS ============
+
+    /// @notice Emitted when idle capital is swept to external vaults
+    /// @param poolId The unique identifier of the pool
+    /// @param amount0 Amount of token0 swept
+    /// @param amount1 Amount of token1 swept
+    /// @param shares0 Vault shares received for token0
+    /// @param shares1 Vault shares received for token1
+    /// @param caller Address that triggered the sweep
+    event CapitalSwept(
+        PoolId indexed poolId,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 shares0,
+        uint256 shares1,
+        address indexed caller
+    );
 
     // ============ MODIFIERS ============
 
