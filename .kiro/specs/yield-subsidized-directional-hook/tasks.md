@@ -43,7 +43,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Emit `OwnershipTransferred` event on ownership transfer
     - _Requirements: 2.1-2.5, 22.1-22.5_
   
-  - [ ] 2.3 Write unit tests for access control
+  - [x] 2.3 Write unit tests for access control
     - Test that callbacks revert when called by non-PoolManager addresses
     - Test that administrative functions revert when called by non-owner addresses
     - Test ownership transfer functionality
@@ -207,18 +207,18 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test IL distribution between token0 and token1
     - _Requirements: 13.1-13.5, 31.1-31.5_
 
-- [ ] 11. Checkpoint - Verify capital sweep and IL calculation
+- [x] 11. Checkpoint - Verify capital sweep and IL calculation
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Implement subsidy distribution system
-  - [ ] 12.1 Create available yield calculation
+- [x] 12. Implement subsidy distribution system
+  - [x] 12.1 Create available yield calculation
     - Implement `calculateAvailableYield(PoolId, bool isToken0)` internal view function
     - Query vault for current asset value using `convertToAssets()`
     - Subtract principal from current value to get yield
     - Return available yield amount
     - _Requirements: 12.1-12.5, 34.1-34.5_
   
-  - [ ] 12.2 Implement vault withdrawal with claim token fallback
+  - [x] 12.2 Implement vault withdrawal with claim token fallback
     - Create `withdrawFromVault(PoolKey, PoolId, bool isToken0, uint256 amount)` internal function
     - Attempt vault withdrawal with try-catch and gas limit
     - On success: update principal tracking, transfer tokens
@@ -228,7 +228,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Emit `ClaimTokenMinted` event on failure
     - _Requirements: 15.1-15.5, 16.1-16.5, 18.1-18.5_
   
-  - [ ] 12.3 Implement beforeRemoveLiquidity callback
+  - [x] 12.3 Implement beforeRemoveLiquidity callback
     - Add `onlyPoolManager` modifier
     - Validate pool is registered
     - Retrieve LP address (from tx.origin or hook data)
@@ -243,7 +243,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Return `beforeRemoveLiquidity.selector`
     - _Requirements: 2.2-2.4, 2.6-2.8, 13.1-13.5, 14.1-14.5, 15.1-15.5, 25.1-25.5, 33.4_
   
-  - [ ]* 12.4 Write unit tests for subsidy distribution
+  - [x] 12.4 Write unit tests for subsidy distribution
     - Test IL subsidy distribution when yield is available
     - Test partial subsidy when yield insufficient
     - Test zero subsidy when no IL
