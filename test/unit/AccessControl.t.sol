@@ -139,6 +139,10 @@ contract AccessControlTest is BaseTest {
 
     /// @notice Test beforeRemoveLiquidity succeeds when called by PoolManager (Req 2.4)
     function test_BeforeRemoveLiquiditySucceedsWhenCalledByPoolManager() public {
+        // Register the pool first
+        vm.prank(address(mockPoolManager));
+        hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
+        
         IPoolManager.ModifyLiquidityParams memory params = IPoolManager.ModifyLiquidityParams({
             tickLower: -60,
             tickUpper: 60,
@@ -147,9 +151,12 @@ contract AccessControlTest is BaseTest {
         });
         
         // This test verifies the modifier allows PoolManager through
+        // The function should succeed and return the selector (not revert with "Not implemented")
         vm.prank(address(mockPoolManager));
-        vm.expectRevert("Not implemented");
-        hook.beforeRemoveLiquidity(address(this), testPoolKey, params, "");
+        bytes4 result = hook.beforeRemoveLiquidity(address(this), testPoolKey, params, "");
+        
+        // Verify it returns the correct selector
+        assertEq(result, IHooks.beforeRemoveLiquidity.selector, "Should return correct selector");
     }
 
     /// @notice Fuzz test: beforeInitialize always reverts for non-PoolManager addresses
