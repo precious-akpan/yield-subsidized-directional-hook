@@ -288,8 +288,8 @@ The implementation follows a dependency-ordered approach, starting with foundati
 - [x] 14. Checkpoint - Verify subsidy and claim token systems
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Implement administrative functions
-  - [~] 15.1 Implement pool configuration function
+- [x] 15. Implement administrative functions
+  - [x] 15.1 Implement pool configuration function
     - Create `configurePool(PoolId, PoolConfig)` external function
     - Add `onlyOwner` and `nonReentrant` modifiers
     - Validate pool is registered
@@ -300,14 +300,14 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Emit `PoolConfigured` event
     - _Requirements: 19.1-19.5, 20.1-20.5, 21.1-21.5, 22.1-22.5_
   
-  - [~] 15.2 Implement pause/unpause functions
+  - [x] 15.2 Implement pause/unpause functions
     - Create `pausePool(PoolId)` external function with `onlyOwner` modifier
     - Create `unpausePool(PoolId)` external function with `onlyOwner` modifier
     - Update `isPaused` flag in pool configs
     - Emit `PoolPaused` or `PoolUnpaused` events
     - _Requirements: 22.1-22.5, 33.1-33.5_
   
-  - [ ]* 15.3 Write unit tests for administrative functions
+  - [x]* 15.3 Write unit tests for administrative functions
     - Test pool configuration with valid parameters
     - Test configuration validation (invalid oracle, mismatched vault assets)
     - Test pause/unpause functionality
