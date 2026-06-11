@@ -90,7 +90,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Ensure proper handling of fixed-point arithmetic and precision
     - _Requirements: 4.1-4.4_
   
-  - [ ]* 5.3 Write unit tests for oracle integration
+  - [x] 5.3 Write unit tests for oracle integration
     - Test oracle price fetching with mock oracle
     - Test staleness detection
     - Test price sanity bounds checking
@@ -285,7 +285,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test lpLockedAmounts tracking accuracy
     - _Requirements: 16.1-16.5, 17.1-17.5_
 
-- [x] 14. Checkpoint - Verify subsidy and claim token systems
+- [ ] 14. Checkpoint - Verify subsidy and claim token systems
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 15. Implement administrative functions
@@ -315,7 +315,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - _Requirements: 19.1-19.5, 20.1-20.5, 21.1-21.5, 22.1-22.5, 33.1-33.5_
 
 - [ ] 16. Implement utility and view functions
-  - [~] 16.1 Create view functions for external queries
+  - [ ] 16.1 Create view functions for external queries
     - Implement `getSubsidyPoolBalance(PoolId)` returning yield and principal amounts
     - Implement `getLPClaimableSubsidy(address lp, PoolId)` calculating LP's share
     - Implement `getRegisteredPools()` returning array of registered pool IDs
@@ -329,19 +329,19 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - _Requirements: 12.4, 12.5, 32.1-32.5_
 
 - [ ] 17. Implement gas optimization passes
-  - [~] 17.1 Optimize storage access patterns
+  - [ ] 17.1 Optimize storage access patterns
     - Cache PoolConfig structs in memory during callbacks
     - Use storage pointers for SubsidyPool updates
     - Pack related fields into single storage slots where possible
     - _Requirements: 7.1-7.5, 27.1-27.5_
   
-  - [~] 17.2 Optimize arithmetic operations
+  - [ ] 17.2 Optimize arithmetic operations
     - Use unchecked blocks for operations guaranteed not to overflow
     - Minimize redundant calculations by caching intermediate results
     - Use bit shifting for power-of-2 multiplications/divisions where applicable
     - _Requirements: 7.1-7.5, 27.1-27.5_
 
-- [~] 18. Checkpoint - Final verification
+- [ ] 18. Checkpoint - Final verification
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 19. Create integration tests
@@ -367,6 +367,8 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Sweep capital to generate yield
     - Remove liquidity and verify subsidy distribution
     - Verify ILSubsidyDistributed event
+- [~] 14. Checkpoint - Verify subsidy and claim token systems
+  - Ensure all tests pass, ask the user if questions arise.
     - Test partial subsidy scenario
     - _Requirements: 13.1-13.5, 14.1-14.5, 25.1-25.5, 31.1-31.5_
   
@@ -415,15 +417,15 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test paused pool allows liquidity removal without subsidies
     - _Requirements: 33.1-33.5_
 
-- [ ] 21. Implement Reactive Network automation contracts
-  - [~] 21.1 Create IYieldSubsidizedDirectionalHook interface
+- [x] 21. Implement Reactive Network automation contracts
+  - [x] 21.1 Create IYieldSubsidizedDirectionalHook interface
     - Define interface for automation compatibility
     - Include `sweepIdleCapital`, `getIdleCapital`, `getPoolConfig`, `getSubsidyPool`, `isPoolRegistered` functions
     - Define events: `IdleCapitalDetected`, `CapitalSwept`, `ILSubsidyDistributed`, `ClaimTokenMinted`
     - Add comprehensive NatSpec documentation
     - _Requirements: 41.1-41.5, 49.1-49.5_
   
-  - [~] 21.2 Implement ReactiveKeeperCallback contract
+  - [ ] 21.2 Implement ReactiveKeeperCallback contract
     - Inherit from AbstractReactive (Reactive Network SDK)
     - Store immutable hook address and Reactive Network service address
     - Implement storage for sweep threshold and minimum sweep interval
@@ -438,7 +440,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Emit SweepTriggered event
     - _Requirements: 42.1-42.5, 43.1-43.5, 44.1-44.5, 47.1-47.5, 50.1-50.5_
   
-  - [~] 21.3 Implement ReactiveSubscriber contract
+  - [ ] 21.3 Implement ReactiveSubscriber contract
     - Inherit from AbstractReactive (Reactive Network SDK)
     - Store immutable hook address, callback address, and Reactive Network service address
     - Define event topic constants for LiquidityModified and IdleCapitalDetected
@@ -449,7 +451,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Forward event to callback contract via IReactive interface
     - _Requirements: 45.1-45.5, 47.1-47.5_
   
-  - [~] 21.4 Add automation configuration functions
+  - [ ] 21.4 Add automation configuration functions
     - Implement `setSweepThreshold(uint256)` with onlyAdmin modifier in callback
     - Implement `setMinSweepInterval(uint256)` with onlyAdmin modifier in callback
     - Implement `transferAdmin(address)` in both contracts
@@ -467,12 +469,12 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - _Requirements: 42.1-42.5, 43.1-43.5, 44.1-44.5, 45.1-45.5, 46.1-46.5_
 
 - [ ] 22. Add IdleCapitalDetected event emission to hook
-  - [~] 22.1 Define IdleCapitalDetected event in hook contract
+  - [ ] 22.1 Define IdleCapitalDetected event in hook contract
     - Add event with parameters: poolId, idleAmount0, idleAmount1, poolKey
     - Include comprehensive NatSpec documentation
     - _Requirements: 41.1-41.5_
   
-  - [~] 22.2 Implement idle capital detection trigger
+  - [ ] 22.2 Implement idle capital detection trigger
     - Create `_emitIdleCapitalIfNeeded(PoolKey)` internal function
     - Call calculateIdleCapital to get current idle amounts
     - Compare against minimum detection threshold (e.g., 0.1 ETH)
@@ -489,7 +491,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - _Requirements: 41.1-41.5_
 
 - [ ] 23. Create deployment script for Reactive Network automation
-  - [~] 23.1 Create DeployReactiveAutomation.s.sol script
+  - [ ] 23.1 Create DeployReactiveAutomation.s.sol script
     - Read environment variables: REACTIVE_SERVICE_ADDRESS, HOOK_ADDRESS, SWEEP_THRESHOLD, SWEEP_INTERVAL
     - Deploy ReactiveKeeperCallback on Reactive Network
     - Deploy ReactiveSubscriber on origin chain
@@ -538,7 +540,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Verify isolated lastSweepTime per pool
     - _Requirements: 50.1-50.5_
 
-- [~] 25. Final checkpoint - Complete verification with automation
+- [ ] 25. Final checkpoint - Complete verification with automation
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
