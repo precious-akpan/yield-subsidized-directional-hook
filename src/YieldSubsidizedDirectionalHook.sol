@@ -67,6 +67,10 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     /// @dev Prevents callback spoofing by validating pool existence
     mapping(PoolId => bool) public registeredPools;
 
+    /// @notice Array of registered pool IDs for enumeration
+    /// @dev Used by getRegisteredPools() to return all registered pools
+    PoolId[] private _registeredPools;
+
     /// @notice Configuration parameters for each registered pool
     /// @dev Contains oracle, vault addresses, fee parameters, and pause status
     mapping(PoolId => DataTypes.PoolConfig) public poolConfigs;
@@ -355,6 +359,9 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
 
         // Register the pool
         registeredPools[poolId] = true;
+
+        // Add pool ID to registered pools array (avoid duplicates)
+        _registeredPools.push(poolId);
 
         // Initialize empty SubsidyPool for this pool
         subsidyPools[poolId] = DataTypes.SubsidyPool({
@@ -1559,5 +1566,94 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     modifier onlyOwner() {
         if (msg.sender != owner) revert Errors.Unauthorized();
         _;
+    }
+
+    // ============ UTILITY AND VIEW FUNCTIONS ============
+
+    /// @notice Returns the subsidy pool balance for a given pool
+    /// @dev Provides yield and principal amounts for both tokens
+    /// @param poolId The pool identifier
+    /// @return SubsidyPool struct containing yield and principal amounts
+    /// @custom:requirements Validates: 12.4, 12.5
+    function getSubsidyPoolBalance(PoolId poolId) external view returns (DataTypes.SubsidyPool memory) {
+        return subsidyPools[poolId];
+    }
+
+    /// @notice Calculates the LP's claimable subsidy from the pool's subsidy pool
+    /// @dev Calculates proportional share based on locked capital vs total locked capital
+    /// @param lp The liquidity provider address
+    /// @param poolId The pool identifier
+    /// @return claimable0 The claimable subsidy amount for token0
+    /// @return claimable1 The claimable subsidy amount for token1
+    /// @custom:requirements Validates: 12.4, 12.5
+    function getLPClaimableSubsidy(address lp, PoolId poolId)
+        external
+        view
+        returns (uint256 claimable0, uint256 claimable1)
+    {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            return (0, 0);
+        }
+
+        // Get the LP's position to determine their locked capital
+        DataTypes.LPPosition memory position = lpPositions[lp][poolId][0];
+
+        // If LP has no position or liquidity, they have no claim
+        if (position.liquidityAmount == 0) {
+            return (0, 0);
+        }
+
+        // Get total locked capital from subsidy pool (using principal as proxy for locked capital)
+        DataTypes.SubsidyPool memory pool = subsidyPools[poolId];
+        uint256 totalLocked0 = pool.totalToken0Principal;
+        uint256 totalLocked1 = pool.totalToken1Principal;
+
+        // If no capital is locked in the pool, return zero
+        if (totalLocked0 == 0 && totalLocked1 == 0) {
+            return (0, 0);
+        }
+
+        // Calculate LP's proportional share based on their initial deposit vs total locked
+        // For token0
+        if (position.token0Initial > 0 && totalLocked0 > 0) {
+            // LP's share = (LP's initial / total locked) * available yield
+            uint256 availableYield0 = calculateAvailableYield(poolId, true);
+            if (availableYield0 > 0) {
+                // Use ratio of LP's initial deposit to total locked
+                uint256 lpShare0 = FullMath.mulDiv(availableYield0, position.token0Initial, totalLocked0);
+                claimable0 = lpShare0;
+            }
+        }
+
+        // For token1
+        if (position.token1Initial > 0 && totalLocked1 > 0) {
+            // LP's share = (LP's initial / total locked) * available yield
+            uint256 availableYield1 = calculateAvailableYield(poolId, false);
+            if (availableYield1 > 0) {
+                // Use ratio of LP's initial deposit to total locked
+                uint256 lpShare1 = FullMath.mulDiv(availableYield1, position.token1Initial, totalLocked1);
+                claimable1 = lpShare1;
+            }
+        }
+
+        return (claimable0, claimable1);
+    }
+
+    /// @notice Returns all registered pool IDs
+    /// @dev Provides enumeration capability for all pools that have been registered
+    /// @return Array of all registered PoolId values
+    /// @custom:requirements Validates: 32.5
+    function getRegisteredPools() external view returns (PoolId[] memory) {
+        return _registeredPools;
+    }
+
+    /// @notice Returns whether a pool is registered
+    /// @dev Simple view function that checks the registeredPools mapping
+    /// @param poolId The pool identifier
+    /// @return bool True if the pool is registered, false otherwise
+    /// @custom:requirements Validates: 32.5
+    function isPoolRegistered(PoolId poolId) external view returns (bool) {
+        return registeredPools[poolId];
     }
 }
