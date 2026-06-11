@@ -20,7 +20,7 @@ contract ReactiveSubscriber is IReactive {
     /// @notice Event signature for IdleCapitalDetected
     /// @dev keccak256("IdleCapitalDetected(bytes32,uint256,uint256)")
     /// This is the event we subscribe to for automated sweep triggering
-    bytes32 private constant IDLE_CAPITAL_DETECTED = 
+    bytes32 private constant IDLE_CAPITAL_DETECTED =
         keccak256(abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256)"));
 
     // ========== STATE VARIABLES ==========
@@ -85,10 +85,7 @@ contract ReactiveSubscriber is IReactive {
     /// @dev Called once during deployment on the origin chain
     /// @param _hookAddress The hook contract address to monitor
     /// @param _callbackContract The Reactive Network callback contract to forward events to
-    constructor(
-        address _hookAddress,
-        address _callbackContract
-    ) {
+    constructor(address _hookAddress, address _callbackContract) {
         require(_hookAddress != address(0), "Invalid hook address");
         require(_callbackContract != address(0), "Invalid callback address");
 

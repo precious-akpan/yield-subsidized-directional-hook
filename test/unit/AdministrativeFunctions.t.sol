@@ -52,7 +52,7 @@ contract AdministrativeFunctionsTest is BaseTest {
 
         // Deploy mock contracts
         mockPoolManager = new MockPoolManager();
-        
+
         // Deploy tokens
         token0 = new MockERC20("Token 0", "TOKEN0", 18);
         token1 = new MockERC20("Token 1", "TOKEN1", 18);
@@ -64,7 +64,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         testOracle = new MockOracle();
         testVault0 = new MockERC4626Vault(address(token0));
         testVault1 = new MockERC4626Vault(address(token1));
-        
+
         // Configure oracle with a default price
         testOracle.setPrice(address(0), address(0), 1e18, block.timestamp);
 
@@ -116,7 +116,15 @@ contract AdministrativeFunctionsTest is BaseTest {
         hook.configurePool(poolId, config);
 
         // Verify configuration is stored
-        (address oracle, address vault0, address vault1, uint24 baseFeeBps, uint24 maxFeeMultiplier, uint24 deviationThresholdBps, bool isPaused) = hook.poolConfigs(poolId);
+        (
+            address oracle,
+            address vault0,
+            address vault1,
+            uint24 baseFeeBps,
+            uint24 maxFeeMultiplier,
+            uint24 deviationThresholdBps,
+            bool isPaused
+        ) = hook.poolConfigs(poolId);
         assertEq(oracle, address(testOracle), "Oracle not stored");
         assertEq(vault0, address(testVault0), "Vault0 not stored");
         assertEq(vault1, address(testVault1), "Vault1 not stored");
@@ -145,7 +153,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         vm.prank(owner);
         hook.configurePool(poolId, config);
 
-        (address oracle, address vault0, address vault1, , , , ) = hook.poolConfigs(poolId);
+        (address oracle, address vault0, address vault1,,,,) = hook.poolConfigs(poolId);
         assertEq(oracle, address(0), "Oracle should be zero");
         assertEq(vault0, address(0), "Vault0 should be zero");
         assertEq(vault1, address(0), "Vault1 should be zero");
@@ -219,7 +227,9 @@ contract AdministrativeFunctionsTest is BaseTest {
 
         // Should revert with InvalidConfiguration
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidConfiguration.selector, "maxFeeMultiplier must be >= baseFeeBps"));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.InvalidConfiguration.selector, "maxFeeMultiplier must be >= baseFeeBps")
+        );
         hook.configurePool(poolId, config);
     }
 
@@ -282,14 +292,22 @@ contract AdministrativeFunctionsTest is BaseTest {
         });
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidConfiguration.selector, "deviationThresholdBps must be between 1 and 10000"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Errors.InvalidConfiguration.selector, "deviationThresholdBps must be between 1 and 10000"
+            )
+        );
         hook.configurePool(poolId, config);
 
         // Test with threshold > 100%
         config.deviationThresholdBps = 10001;
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidConfiguration.selector, "deviationThresholdBps must be between 1 and 10000"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Errors.InvalidConfiguration.selector, "deviationThresholdBps must be between 1 and 10000"
+            )
+        );
         hook.configurePool(poolId, config);
     }
 
@@ -373,7 +391,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         PoolId poolId = testPoolKey.toId();
 
         // Pool should not be paused initially
-        (, , , , , , bool isPaused) = hook.poolConfigs(poolId);
+        (,,,,,, bool isPaused) = hook.poolConfigs(poolId);
         assertFalse(isPaused, "Pool should not be paused initially");
 
         // Expect PoolPaused event
@@ -385,7 +403,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         hook.pausePool(poolId);
 
         // Verify pool is paused
-        (, , , , , , bool isPausedAfter) = hook.poolConfigs(poolId);
+        (,,,,,, bool isPausedAfter) = hook.poolConfigs(poolId);
         assertTrue(isPausedAfter, "Pool should be paused");
     }
 
@@ -427,7 +445,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         // First pause the pool
         vm.prank(owner);
         hook.pausePool(poolId);
-        (, , , , , , bool isPausedBefore) = hook.poolConfigs(poolId);
+        (,,,,,, bool isPausedBefore) = hook.poolConfigs(poolId);
         assertTrue(isPausedBefore, "Pool should be paused");
 
         // Expect PoolUnpaused event
@@ -439,7 +457,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         hook.unpausePool(poolId);
 
         // Verify pool is unpaused
-        (, , , , , , bool isPausedAfter) = hook.poolConfigs(poolId);
+        (,,,,,, bool isPausedAfter) = hook.poolConfigs(poolId);
         assertFalse(isPausedAfter, "Pool should be unpaused");
     }
 
@@ -486,23 +504,23 @@ contract AdministrativeFunctionsTest is BaseTest {
         // First cycle
         vm.prank(owner);
         hook.pausePool(poolId);
-        (, , , , , , bool isPaused1) = hook.poolConfigs(poolId);
+        (,,,,,, bool isPaused1) = hook.poolConfigs(poolId);
         assertTrue(isPaused1, "Pool should be paused");
 
         vm.prank(owner);
         hook.unpausePool(poolId);
-        (, , , , , , bool isUnpaused1) = hook.poolConfigs(poolId);
+        (,,,,,, bool isUnpaused1) = hook.poolConfigs(poolId);
         assertFalse(isUnpaused1, "Pool should be unpaused");
 
         // Second cycle
         vm.prank(owner);
         hook.pausePool(poolId);
-        (, , , , , , bool isPaused2) = hook.poolConfigs(poolId);
+        (,,,,,, bool isPaused2) = hook.poolConfigs(poolId);
         assertTrue(isPaused2, "Pool should be paused again");
 
         vm.prank(owner);
         hook.unpausePool(poolId);
-        (, , , , , , bool isUnpaused2) = hook.poolConfigs(poolId);
+        (,,,,,, bool isUnpaused2) = hook.poolConfigs(poolId);
         assertFalse(isUnpaused2, "Pool should be unpaused again");
     }
 

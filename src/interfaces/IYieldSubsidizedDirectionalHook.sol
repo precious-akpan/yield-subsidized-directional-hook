@@ -133,12 +133,7 @@ interface IYieldSubsidizedDirectionalHook {
     /// @param claimTokenId The ERC-1155 token ID representing this vault/token claim
     /// @param amount The amount of principal locked in vault
     /// @param vault The vault address holding the locked capital
-    event ClaimTokenMinted(
-        address indexed lp,
-        uint256 indexed claimTokenId,
-        uint256 amount,
-        address vault
-    );
+    event ClaimTokenMinted(address indexed lp, uint256 indexed claimTokenId, uint256 amount, address vault);
 
     /// @notice Emitted when idle capital is detected in a pool
     /// @dev Fired to signal automation systems that sweep conditions may be favorable
@@ -146,11 +141,7 @@ interface IYieldSubsidizedDirectionalHook {
     /// @param poolId The pool with detected idle capital
     /// @param idleAmount0 Amount of out-of-range token0 capital
     /// @param idleAmount1 Amount of out-of-range token1 capital
-    event IdleCapitalDetected(
-        PoolId indexed poolId,
-        uint256 idleAmount0,
-        uint256 idleAmount1
-    );
+    event IdleCapitalDetected(PoolId indexed poolId, uint256 idleAmount0, uint256 idleAmount1);
 
     // ========== PERMISSIONLESS CAPITAL SWEEP FUNCTIONS ==========
 
@@ -213,10 +204,7 @@ interface IYieldSubsidizedDirectionalHook {
     /// @return idleAmount0 Total idle capital denominated in token0
     /// @return idleAmount1 Total idle capital denominated in token1
     /// @dev **Validates: Requirements 8.1-8.5**
-    function getIdleCapital(PoolKey calldata key)
-        external
-        view
-        returns (uint256 idleAmount0, uint256 idleAmount1);
+    function getIdleCapital(PoolKey calldata key) external view returns (uint256 idleAmount0, uint256 idleAmount1);
 
     /// @notice Returns the complete configuration for a pool
     /// @dev Used by automation systems to verify sweep parameters before triggering

@@ -92,11 +92,12 @@ contract FlowClassificationTest is Test {
         poolManager.setSlot0(testPoolId, SQRT_PRICE_1_1, 0, 0, 0);
 
         // Execute: Swap that moves price away
-        (bool isToxic, uint24 feeMultiplier) = hook.exposed_classifyFlow(
-            testPool,
-            false, // oneForZero (buying token0, price increases)
-            1e18 // amount
-        );
+        (bool isToxic, uint24 feeMultiplier) =
+            hook.exposed_classifyFlow(
+                testPool,
+                false, // oneForZero (buying token0, price increases)
+                1e18 // amount
+            );
 
         // Verify: Classified as toxic
         assertTrue(isToxic, "Swap should be classified as toxic");
@@ -110,11 +111,12 @@ contract FlowClassificationTest is Test {
         poolManager.setSlot0(testPoolId, uint160(SQRT_PRICE_1_1 * 141 / 100), 0, 0, 0); // ~2:1
 
         // Execute: Swap that moves price toward oracle
-        (bool isToxic, uint24 feeMultiplier) = hook.exposed_classifyFlow(
-            testPool,
-            true, // zeroForOne (selling token0, price decreases toward oracle)
-            1e18
-        );
+        (bool isToxic, uint24 feeMultiplier) =
+            hook.exposed_classifyFlow(
+                testPool,
+                true, // zeroForOne (selling token0, price decreases toward oracle)
+                1e18
+            );
 
         // Verify: Classified as benign
         assertFalse(isToxic, "Swap should be classified as benign");
@@ -126,11 +128,7 @@ contract FlowClassificationTest is Test {
         oracle.setStalePrice(TOKEN0, TOKEN1, PRICE_1_TO_1, 600); // 10 minutes old
 
         // Execute: Classification with invalid oracle
-        (bool isToxic, uint24 feeMultiplier) = hook.exposed_classifyFlow(
-            testPool,
-            false,
-            1e18
-        );
+        (bool isToxic, uint24 feeMultiplier) = hook.exposed_classifyFlow(testPool, false, 1e18);
 
         // Verify: Falls back to baseline fee
         assertFalse(isToxic, "Should not be toxic when oracle invalid");
@@ -143,11 +141,12 @@ contract FlowClassificationTest is Test {
         poolManager.setSlot0(testPoolId, SQRT_PRICE_1_1, 0, 0, 0);
 
         // Execute: Very small swap (low price impact)
-        (bool isToxic, uint24 feeMultiplier) = hook.exposed_classifyFlow(
-            testPool,
-            false,
-            1e15 // 0.001 tokens (very small amount)
-        );
+        (bool isToxic, uint24 feeMultiplier) =
+            hook.exposed_classifyFlow(
+                testPool,
+                false,
+                1e15 // 0.001 tokens (very small amount)
+            );
 
         // Verify: Even if toxic direction, small deviation uses base fee
         assertEq(feeMultiplier, BASE_FEE_BPS, "Small deviation should use base fee");
@@ -159,11 +158,12 @@ contract FlowClassificationTest is Test {
         poolManager.setSlot0(testPoolId, SQRT_PRICE_1_1, 0, 0, 0);
 
         // Execute: zeroForOne swap (selling token0 for token1)
-        (bool isToxic, uint24 feeMultiplier) = hook.exposed_classifyFlow(
-            testPool,
-            true, // zeroForOne
-            1e18
-        );
+        (bool isToxic, uint24 feeMultiplier) =
+            hook.exposed_classifyFlow(
+                testPool,
+                true, // zeroForOne
+                1e18
+            );
 
         // Verify: Price should move down, creating deviation
         // Since oracle is at 1:1 and we're moving down, it's toxic
@@ -176,11 +176,12 @@ contract FlowClassificationTest is Test {
         poolManager.setSlot0(testPoolId, SQRT_PRICE_1_1, 0, 0, 0);
 
         // Execute: oneForZero swap (selling token1 for token0)
-        (bool isToxic, uint24 feeMultiplier) = hook.exposed_classifyFlow(
-            testPool,
-            false, // oneForZero
-            1e18
-        );
+        (bool isToxic, uint24 feeMultiplier) =
+            hook.exposed_classifyFlow(
+                testPool,
+                false, // oneForZero
+                1e18
+            );
 
         // Verify: Price should move up, creating deviation
         assertTrue(isToxic, "Moving up from 1:1 should be toxic");
@@ -193,11 +194,7 @@ contract FlowClassificationTest is Test {
         bool zeroForOne = true;
         int256 amount = 1e18;
 
-        uint256 estimatedPrice = hook.exposed_estimatePostSwapPrice(
-            currentPrice,
-            zeroForOne,
-            amount
-        );
+        uint256 estimatedPrice = hook.exposed_estimatePostSwapPrice(currentPrice, zeroForOne, amount);
 
         assertLt(estimatedPrice, currentPrice, "Price should decrease for zeroForOne swap");
     }
@@ -207,11 +204,7 @@ contract FlowClassificationTest is Test {
         bool zeroForOne = false;
         int256 amount = 1e18;
 
-        uint256 estimatedPrice = hook.exposed_estimatePostSwapPrice(
-            currentPrice,
-            zeroForOne,
-            amount
-        );
+        uint256 estimatedPrice = hook.exposed_estimatePostSwapPrice(currentPrice, zeroForOne, amount);
 
         assertGt(estimatedPrice, currentPrice, "Price should increase for oneForZero swap");
     }
@@ -220,17 +213,9 @@ contract FlowClassificationTest is Test {
         uint256 currentPrice = PRICE_1_TO_1;
         bool zeroForOne = true;
 
-        uint256 estimatedPrice1 = hook.exposed_estimatePostSwapPrice(
-            currentPrice,
-            zeroForOne,
-            1e18
-        );
+        uint256 estimatedPrice1 = hook.exposed_estimatePostSwapPrice(currentPrice, zeroForOne, 1e18);
 
-        uint256 estimatedPrice2 = hook.exposed_estimatePostSwapPrice(
-            currentPrice,
-            zeroForOne,
-            10e18
-        );
+        uint256 estimatedPrice2 = hook.exposed_estimatePostSwapPrice(currentPrice, zeroForOne, 10e18);
 
         assertLt(estimatedPrice2, estimatedPrice1, "Larger swap should have larger price impact");
     }
@@ -239,17 +224,9 @@ contract FlowClassificationTest is Test {
         uint256 currentPrice = PRICE_1_TO_1;
         bool zeroForOne = true;
 
-        uint256 estimatedPrice1 = hook.exposed_estimatePostSwapPrice(
-            currentPrice,
-            zeroForOne,
-            1e18
-        );
+        uint256 estimatedPrice1 = hook.exposed_estimatePostSwapPrice(currentPrice, zeroForOne, 1e18);
 
-        uint256 estimatedPrice2 = hook.exposed_estimatePostSwapPrice(
-            currentPrice,
-            zeroForOne,
-            -1e18
-        );
+        uint256 estimatedPrice2 = hook.exposed_estimatePostSwapPrice(currentPrice, zeroForOne, -1e18);
 
         assertEq(estimatedPrice1, estimatedPrice2, "Absolute value should be used for amount");
     }
@@ -259,11 +236,7 @@ contract FlowClassificationTest is Test {
         bool zeroForOne = true;
         int256 hugeAmount = 1000e18; // Very large swap
 
-        uint256 estimatedPrice = hook.exposed_estimatePostSwapPrice(
-            currentPrice,
-            zeroForOne,
-            hugeAmount
-        );
+        uint256 estimatedPrice = hook.exposed_estimatePostSwapPrice(currentPrice, zeroForOne, hugeAmount);
 
         // Price impact should be capped at 50%
         uint256 minExpectedPrice = currentPrice / 2;
@@ -359,7 +332,7 @@ contract FlowClassificationTest is Test {
         // Verify scaling behavior
         // At threshold (1x), multiplier should be at base (1.0x = 10000)
         assertEq(multiplier1x, 10000, "At threshold should return base multiplier");
-        
+
         // Above threshold should scale up, both should hit the cap at 30000 (3x)
         // because the formula scales quickly with 2x multiplier = 30000
         assertEq(multiplier2x, MAX_FEE_MULTIPLIER, "2x threshold should hit max multiplier");
@@ -371,26 +344,26 @@ contract FlowClassificationTest is Test {
 contract YieldSubsidizedDirectionalHookHarness is YieldSubsidizedDirectionalHook {
     constructor(IPoolManager _poolManager) YieldSubsidizedDirectionalHook(_poolManager) {}
 
-    function exposed_classifyFlow(
-        PoolKey calldata key,
-        bool zeroForOne,
-        int256 amountSpecified
-    ) external returns (bool isToxic, uint24 feeMultiplier) {
+    function exposed_classifyFlow(PoolKey calldata key, bool zeroForOne, int256 amountSpecified)
+        external
+        returns (bool isToxic, uint24 feeMultiplier)
+    {
         return classifyFlow(key, zeroForOne, amountSpecified);
     }
 
-    function exposed_estimatePostSwapPrice(
-        uint256 currentPrice,
-        bool zeroForOne,
-        int256 amountSpecified
-    ) external pure returns (uint256) {
+    function exposed_estimatePostSwapPrice(uint256 currentPrice, bool zeroForOne, int256 amountSpecified)
+        external
+        pure
+        returns (uint256)
+    {
         return estimatePostSwapPrice(currentPrice, zeroForOne, amountSpecified);
     }
 
-    function exposed_calculateFeeMultiplier(
-        uint256 deviationBps,
-        DataTypes.PoolConfig memory config
-    ) external pure returns (uint24) {
+    function exposed_calculateFeeMultiplier(uint256 deviationBps, DataTypes.PoolConfig memory config)
+        external
+        pure
+        returns (uint24)
+    {
         return calculateFeeMultiplier(deviationBps, config);
     }
 

@@ -24,7 +24,7 @@ contract ReactiveKeeperCallback is IReactive {
 
     /// @notice Event signature for IdleCapitalDetected
     /// @dev keccak256("IdleCapitalDetected(bytes32,uint256,uint256)")
-    bytes32 private constant IDLE_CAPITAL_DETECTED = 
+    bytes32 private constant IDLE_CAPITAL_DETECTED =
         keccak256(abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256)"));
 
     // ========== STATE VARIABLES ==========
@@ -61,12 +61,7 @@ contract ReactiveKeeperCallback is IReactive {
     /// @param idleAmount0 Amount of idle token0 that triggered the sweep
     /// @param idleAmount1 Amount of idle token1 that triggered the sweep
     /// @param timestamp Block timestamp of the sweep execution
-    event SweepTriggered(
-        PoolId indexed poolId,
-        uint256 idleAmount0,
-        uint256 idleAmount1,
-        uint256 timestamp
-    );
+    event SweepTriggered(PoolId indexed poolId, uint256 idleAmount0, uint256 idleAmount1, uint256 timestamp);
 
     /// @notice Emitted when sweep threshold is updated
     /// @dev Fired by setSweepThreshold function
@@ -104,11 +99,7 @@ contract ReactiveKeeperCallback is IReactive {
     /// @param _hookAddress The hook contract address on the origin chain (Ethereum L1 or other)
     /// @param _sweepThreshold Initial minimum idle capital threshold (e.g., 1e18 for 1 token unit)
     /// @param _minSweepInterval Initial minimum seconds between sweeps (e.g., 7 days = 604800 seconds)
-    constructor(
-        address _hookAddress,
-        uint256 _sweepThreshold,
-        uint256 _minSweepInterval
-    ) {
+    constructor(address _hookAddress, uint256 _sweepThreshold, uint256 _minSweepInterval) {
         require(_hookAddress != address(0), "Invalid hook address");
         require(_sweepThreshold > 0, "Invalid threshold");
 
@@ -176,7 +167,7 @@ contract ReactiveKeeperCallback is IReactive {
         // 2. Validate event signature is IdleCapitalDetected
         // Note: In production, we would validate log.topic_0 against the expected event signature
         // For now, we trust the Reactive Network has already validated the event
-        
+
         // 3. Extract poolId from indexed parameter (topic_1)
         PoolId poolId = PoolId.wrap(bytes32(log.topic_1));
 
@@ -187,7 +178,7 @@ contract ReactiveKeeperCallback is IReactive {
         }
 
         // 5. Decode event data to extract idle amounts and PoolKey
-        (uint256 idleAmount0, uint256 idleAmount1, PoolKey memory poolKey) = 
+        (uint256 idleAmount0, uint256 idleAmount1, PoolKey memory poolKey) =
             abi.decode(log.data, (uint256, uint256, PoolKey));
 
         // 6. Check if idle capital exceeds minimum threshold for either token

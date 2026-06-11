@@ -33,13 +33,11 @@ abstract contract BaseTest is Test {
     }
 
     /// @notice Helper to create a test PoolKey
-    function createPoolKey(
-        address token0,
-        address token1,
-        uint24 fee,
-        int24 tickSpacing,
-        address hooks
-    ) internal pure returns (PoolKey memory) {
+    function createPoolKey(address token0, address token1, uint24 fee, int24 tickSpacing, address hooks)
+        internal
+        pure
+        returns (PoolKey memory)
+    {
         return PoolKey({
             currency0: Currency.wrap(token0),
             currency1: Currency.wrap(token1),

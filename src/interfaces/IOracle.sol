@@ -16,8 +16,5 @@ interface IOracle {
     /// @param token1 The quote token address
     /// @return price The price expressed as token1 per token0 in fixed-point format
     /// @return timestamp The timestamp of the price observation (should be block.timestamp or recent)
-    function getPrice(address token0, address token1) 
-        external 
-        view 
-        returns (uint256 price, uint256 timestamp);
+    function getPrice(address token0, address token1) external view returns (uint256 price, uint256 timestamp);
 }

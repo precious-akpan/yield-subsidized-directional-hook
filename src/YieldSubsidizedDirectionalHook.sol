@@ -189,11 +189,7 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     /// @param poolId The unique identifier of the pool to configure
     /// @param config The PoolConfig struct containing oracle, vaults, and fee parameters
     /// @custom:requirements Validates: 19.1-19.5, 20.1-20.5, 21.1-21.5, 22.1-22.5
-    function configurePool(PoolId poolId, DataTypes.PoolConfig calldata config)
-        external
-        onlyOwner
-        nonReentrant
-    {
+    function configurePool(PoolId poolId, DataTypes.PoolConfig calldata config) external onlyOwner nonReentrant {
         // Validate pool is registered
         if (!registeredPools[poolId]) {
             revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
@@ -203,9 +199,12 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         if (config.oracle != address(0)) {
             // Try to call getPrice to verify oracle interface
             // Using try-catch with gas limit to detect if oracle is a valid contract
-            try IOracle(config.oracle).getPrice(address(0), address(0)) returns (uint256, uint256) {
-                // Oracle call succeeded - it appears to implement the interface
-            } catch {
+            try IOracle(config.oracle).getPrice(address(0), address(0)) returns (
+                uint256, uint256
+            ) {
+            // Oracle call succeeded - it appears to implement the interface
+            }
+            catch {
                 // Oracle call failed - likely doesn't implement IOracle or reverts
                 revert Errors.InvalidOracle(config.oracle);
             }
@@ -214,10 +213,13 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         // Validate vault0 implements IExternalVault interface if non-zero
         if (config.vault0 != address(0)) {
             // Validate vault implements required interface by checking asset()
-            try IExternalVault(config.vault0).asset() returns (address) {
-                // Vault must be retrievable in the pool key to validate asset match
-                // For now, we store this for later validation during sweeps
-            } catch {
+            try IExternalVault(config.vault0).asset() returns (
+                address
+            ) {
+            // Vault must be retrievable in the pool key to validate asset match
+            // For now, we store this for later validation during sweeps
+            }
+            catch {
                 revert Errors.InvalidVault(config.vault0);
             }
         }
@@ -225,10 +227,13 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         // Validate vault1 implements IExternalVault interface if non-zero
         if (config.vault1 != address(0)) {
             // Validate vault implements required interface by checking asset()
-            try IExternalVault(config.vault1).asset() returns (address) {
-                // Vault must be retrievable in the pool key to validate asset match
-                // For now, we store this for later validation during sweeps
-            } catch {
+            try IExternalVault(config.vault1).asset() returns (
+                address
+            ) {
+            // Vault must be retrievable in the pool key to validate asset match
+            // For now, we store this for later validation during sweeps
+            }
+            catch {
                 revert Errors.InvalidVault(config.vault1);
             }
         }

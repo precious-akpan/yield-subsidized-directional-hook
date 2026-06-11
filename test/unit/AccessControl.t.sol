@@ -16,35 +16,35 @@ import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 /// @dev Tests onlyPoolManager and onlyOwner modifiers, and ownership transfer functionality
 contract AccessControlTest is BaseTest {
     using PoolIdLibrary for PoolKey;
-    
+
     YieldSubsidizedDirectionalHook public hook;
     MockPoolManager public mockPoolManager;
     PoolKey public testPoolKey;
-    
+
     address public deployer;
     address public attacker;
 
     function setUp() public override {
         super.setUp();
-        
+
         deployer = address(this);
         attacker = address(0x999);
-        
+
         // Deploy mock PoolManager
         mockPoolManager = new MockPoolManager();
-        
+
         // Deploy hook with mock PoolManager
         hook = new YieldSubsidizedDirectionalHook(IPoolManager(address(mockPoolManager)));
-        
+
         // Create a test PoolKey
         testPoolKey = createPoolKey(
             address(0x1000), // token0
             address(0x2000), // token1
-            3000,            // fee
-            60,              // tickSpacing
-            address(hook)    // hooks
+            3000, // fee
+            60, // tickSpacing
+            address(hook) // hooks
         );
-        
+
         vm.label(deployer, "Deployer");
         vm.label(attacker, "Attacker");
         vm.label(address(hook), "Hook");
@@ -64,12 +64,9 @@ contract AccessControlTest is BaseTest {
 
     /// @notice Test beforeSwap reverts when called by non-PoolManager (Req 2.3, 2.5)
     function test_RevertWhen_BeforeSwapCalledByNonPoolManager() public {
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: SQRT_PRICE_1_2
-        });
-        
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: SQRT_PRICE_1_2});
+
         vm.prank(attacker);
         vm.expectRevert(Errors.UnauthorizedCaller.selector);
         hook.beforeSwap(address(this), testPoolKey, swapParams, "");
@@ -78,12 +75,9 @@ contract AccessControlTest is BaseTest {
     /// @notice Test beforeRemoveLiquidity reverts when called by non-PoolManager (Req 2.4, 2.5)
     function test_RevertWhen_BeforeRemoveLiquidityCalledByNonPoolManager() public {
         IPoolManager.ModifyLiquidityParams memory params = IPoolManager.ModifyLiquidityParams({
-            tickLower: -60,
-            tickUpper: 60,
-            liquidityDelta: -1e18,
-            salt: bytes32(0)
+            tickLower: -60, tickUpper: 60, liquidityDelta: -1e18, salt: bytes32(0)
         });
-        
+
         vm.prank(attacker);
         vm.expectRevert(Errors.UnauthorizedCaller.selector);
         hook.beforeRemoveLiquidity(address(this), testPoolKey, params, "");
@@ -95,7 +89,7 @@ contract AccessControlTest is BaseTest {
         // The function should now execute successfully and return the correct selector
         vm.prank(address(mockPoolManager));
         bytes4 selector = hook.beforeInitialize(address(this), testPoolKey, SQRT_PRICE_1_1);
-        
+
         // Verify correct selector is returned
         assertEq(selector, hook.beforeInitialize.selector, "Should return beforeInitialize selector");
     }
@@ -105,32 +99,31 @@ contract AccessControlTest is BaseTest {
         // First register the pool via beforeInitialize
         vm.prank(address(mockPoolManager));
         hook.beforeInitialize(address(this), testPoolKey, SQRT_PRICE_1_1);
-        
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: SQRT_PRICE_1_2
-        });
-        
+
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: SQRT_PRICE_1_2});
+
         // This test verifies the modifier allows PoolManager through
         // The function should now execute successfully without reverting
         vm.prank(address(mockPoolManager));
-        (bytes4 selector, BeforeSwapDelta delta, uint24 fee) = hook.beforeSwap(address(this), testPoolKey, swapParams, "");
-        
+        (bytes4 selector, BeforeSwapDelta delta, uint24 fee) =
+            hook.beforeSwap(address(this), testPoolKey, swapParams, "");
+
         // Verify correct selector is returned
         assertEq(selector, hook.beforeSwap.selector, "Should return beforeSwap selector");
         // Verify ZERO_DELTA is returned
-        assertEq(BeforeSwapDelta.unwrap(delta), BeforeSwapDelta.unwrap(BeforeSwapDeltaLibrary.ZERO_DELTA), "Should return ZERO_DELTA");
+        assertEq(
+            BeforeSwapDelta.unwrap(delta),
+            BeforeSwapDelta.unwrap(BeforeSwapDeltaLibrary.ZERO_DELTA),
+            "Should return ZERO_DELTA"
+        );
     }
 
     /// @notice Test beforeSwap reverts when pool is not registered (Req 2.8)
     function test_RevertWhen_BeforeSwapCalledOnUnregisteredPool() public {
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: SQRT_PRICE_1_2
-        });
-        
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: SQRT_PRICE_1_2});
+
         // Pool is not registered, should revert
         vm.prank(address(mockPoolManager));
         vm.expectRevert(abi.encodeWithSelector(Errors.PoolNotRegistered.selector, testPoolKey.toId()));
@@ -142,19 +135,16 @@ contract AccessControlTest is BaseTest {
         // Register the pool first
         vm.prank(address(mockPoolManager));
         hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
-        
+
         IPoolManager.ModifyLiquidityParams memory params = IPoolManager.ModifyLiquidityParams({
-            tickLower: -60,
-            tickUpper: 60,
-            liquidityDelta: -1e18,
-            salt: bytes32(0)
+            tickLower: -60, tickUpper: 60, liquidityDelta: -1e18, salt: bytes32(0)
         });
-        
+
         // This test verifies the modifier allows PoolManager through
         // The function should succeed and return the selector (not revert with "Not implemented")
         vm.prank(address(mockPoolManager));
         bytes4 result = hook.beforeRemoveLiquidity(address(this), testPoolKey, params, "");
-        
+
         // Verify it returns the correct selector
         assertEq(result, IHooks.beforeRemoveLiquidity.selector, "Should return correct selector");
     }
@@ -163,7 +153,7 @@ contract AccessControlTest is BaseTest {
     function testFuzz_BeforeInitializeRevertsForNonPoolManager(address caller) public {
         vm.assume(caller != address(mockPoolManager));
         vm.assume(caller != address(0));
-        
+
         vm.prank(caller);
         vm.expectRevert(Errors.UnauthorizedCaller.selector);
         hook.beforeInitialize(address(this), testPoolKey, SQRT_PRICE_1_1);
@@ -173,13 +163,10 @@ contract AccessControlTest is BaseTest {
     function testFuzz_BeforeSwapRevertsForNonPoolManager(address caller) public {
         vm.assume(caller != address(mockPoolManager));
         vm.assume(caller != address(0));
-        
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: SQRT_PRICE_1_2
-        });
-        
+
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: SQRT_PRICE_1_2});
+
         vm.prank(caller);
         vm.expectRevert(Errors.UnauthorizedCaller.selector);
         hook.beforeSwap(address(this), testPoolKey, swapParams, "");
@@ -189,14 +176,11 @@ contract AccessControlTest is BaseTest {
     function testFuzz_BeforeRemoveLiquidityRevertsForNonPoolManager(address caller) public {
         vm.assume(caller != address(mockPoolManager));
         vm.assume(caller != address(0));
-        
+
         IPoolManager.ModifyLiquidityParams memory params = IPoolManager.ModifyLiquidityParams({
-            tickLower: -60,
-            tickUpper: 60,
-            liquidityDelta: -1e18,
-            salt: bytes32(0)
+            tickLower: -60, tickUpper: 60, liquidityDelta: -1e18, salt: bytes32(0)
         });
-        
+
         vm.prank(caller);
         vm.expectRevert(Errors.UnauthorizedCaller.selector);
         hook.beforeRemoveLiquidity(address(this), testPoolKey, params, "");
@@ -221,20 +205,20 @@ contract AccessControlTest is BaseTest {
     /// @notice Test transferOwnership succeeds when called by owner (Req 22.2, 22.4)
     function test_TransferOwnershipSucceedsWhenCalledByOwner() public {
         address newOwner = address(0x123);
-        
+
         vm.prank(deployer);
         hook.transferOwnership(newOwner);
-        
+
         assertEq(hook.owner(), newOwner, "Owner should be updated to newOwner");
     }
 
     /// @notice Test transferOwnership emits OwnershipTransferred event (Req 22.5)
     function test_TransferOwnershipEmitsEvent() public {
         address newOwner = address(0x123);
-        
+
         vm.expectEmit(true, true, false, false, address(hook));
         emit YieldSubsidizedDirectionalHook.OwnershipTransferred(deployer, newOwner);
-        
+
         vm.prank(deployer);
         hook.transferOwnership(newOwner);
     }
@@ -250,20 +234,20 @@ contract AccessControlTest is BaseTest {
     function test_NewOwnerCanCallAdministrativeFunctions() public {
         address newOwner = address(0x123);
         address anotherOwner = address(0x456);
-        
+
         // Transfer ownership to newOwner
         vm.prank(deployer);
         hook.transferOwnership(newOwner);
-        
+
         // Old owner should NOT be able to transfer ownership
         vm.prank(deployer);
         vm.expectRevert(Errors.Unauthorized.selector);
         hook.transferOwnership(anotherOwner);
-        
+
         // New owner SHOULD be able to transfer ownership
         vm.prank(newOwner);
         hook.transferOwnership(anotherOwner);
-        
+
         assertEq(hook.owner(), anotherOwner, "Ownership should transfer to anotherOwner");
     }
 
@@ -272,7 +256,7 @@ contract AccessControlTest is BaseTest {
         vm.assume(caller != deployer);
         vm.assume(caller != address(0));
         vm.assume(newOwner != address(0));
-        
+
         vm.prank(caller);
         vm.expectRevert(Errors.Unauthorized.selector);
         hook.transferOwnership(newOwner);
@@ -283,31 +267,31 @@ contract AccessControlTest is BaseTest {
         address owner1 = address(0x111);
         address owner2 = address(0x222);
         address owner3 = address(0x333);
-        
+
         // deployer -> owner1
         vm.prank(deployer);
         hook.transferOwnership(owner1);
         assertEq(hook.owner(), owner1);
-        
+
         // owner1 -> owner2
         vm.prank(owner1);
         hook.transferOwnership(owner2);
         assertEq(hook.owner(), owner2);
-        
+
         // owner2 -> owner3
         vm.prank(owner2);
         hook.transferOwnership(owner3);
         assertEq(hook.owner(), owner3);
-        
+
         // Previous owners should no longer have access
         vm.prank(deployer);
         vm.expectRevert(Errors.Unauthorized.selector);
         hook.transferOwnership(deployer);
-        
+
         vm.prank(owner1);
         vm.expectRevert(Errors.Unauthorized.selector);
         hook.transferOwnership(owner1);
-        
+
         vm.prank(owner2);
         vm.expectRevert(Errors.Unauthorized.selector);
         hook.transferOwnership(owner2);
@@ -337,7 +321,7 @@ contract AccessControlTest is BaseTest {
     function test_AttackerCannotBypassAccessControlViaContract() public {
         // Deploy malicious contract that tries to call hook
         MaliciousContract malicious = new MaliciousContract(hook);
-        
+
         vm.expectRevert(Errors.UnauthorizedCaller.selector);
         malicious.attemptBeforeInitialize(testPoolKey);
     }
@@ -353,11 +337,11 @@ contract AccessControlTest is BaseTest {
 /// @notice Helper contract for testing access control bypass attempts
 contract MaliciousContract {
     YieldSubsidizedDirectionalHook public hook;
-    
+
     constructor(YieldSubsidizedDirectionalHook _hook) {
         hook = _hook;
     }
-    
+
     function attemptBeforeInitialize(PoolKey memory poolKey) external {
         hook.beforeInitialize(address(this), poolKey, 79228162514264337593543950336);
     }

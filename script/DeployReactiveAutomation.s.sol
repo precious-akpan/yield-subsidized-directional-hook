@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
+
 // TODO: Uncomment when automation contracts are implemented (Task 21)
 // import {ReactiveKeeperCallback} from "../src/automation/ReactiveKeeperCallback.sol";
 // import {ReactiveSubscriber} from "../src/automation/ReactiveSubscriber.sol";
@@ -18,12 +19,12 @@ contract DeployReactiveAutomation is Script {
 
     function run() external pure {
         revert("DeployReactiveAutomation: Not yet implemented. See Task 21.");
-        
+
         /* TODO: Uncomment when automation contracts are implemented
         // Load environment variables
         address reactiveService = vm.envAddress("REACTIVE_SERVICE_ADDRESS");
         address hookAddress = vm.envAddress("HOOK_ADDRESS");
-        
+
         // Optional: custom thresholds
         uint256 sweepThreshold = vm.envOr("SWEEP_THRESHOLD", DEFAULT_SWEEP_THRESHOLD);
         uint256 sweepInterval = vm.envOr("SWEEP_INTERVAL", DEFAULT_SWEEP_INTERVAL);

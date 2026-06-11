@@ -48,17 +48,10 @@ contract ReactiveAutomationTests is BaseTest {
         hookAddress = address(mockHook);
 
         // Deploy ReactiveKeeperCallback
-        keeperCallback = new ReactiveKeeperCallback(
-            hookAddress,
-            DEFAULT_THRESHOLD,
-            DEFAULT_INTERVAL
-        );
+        keeperCallback = new ReactiveKeeperCallback(hookAddress, DEFAULT_THRESHOLD, DEFAULT_INTERVAL);
 
         // Deploy ReactiveSubscriber
-        subscriber = new ReactiveSubscriber(
-            hookAddress,
-            payable(address(keeperCallback))
-        );
+        subscriber = new ReactiveSubscriber(hookAddress, payable(address(keeperCallback)));
 
         // Create test pool
         testPoolKey = createPoolKey(ALICE, BOB, 3000, 60, hookAddress);
@@ -305,12 +298,7 @@ contract ReactiveAutomationTests is BaseTest {
         IReactive.LogRecord memory log = _createLogRecord(testPoolId, IDLE_AMOUNT_0, IDLE_AMOUNT_1);
 
         vm.expectEmit(true, true, true, true);
-        emit ReactiveKeeperCallback.SweepTriggered(
-            testPoolId,
-            IDLE_AMOUNT_0,
-            IDLE_AMOUNT_1,
-            block.timestamp
-        );
+        emit ReactiveKeeperCallback.SweepTriggered(testPoolId, IDLE_AMOUNT_0, IDLE_AMOUNT_1, block.timestamp);
 
         keeperCallback.react(log);
     }
@@ -479,11 +467,11 @@ contract ReactiveAutomationTests is BaseTest {
     // ========== HELPER FUNCTIONS ==========
 
     /// @notice Creates a LogRecord for testing
-    function _createLogRecord(
-        PoolId poolId,
-        uint256 idleAmount0,
-        uint256 idleAmount1
-    ) private view returns (IReactive.LogRecord memory) {
+    function _createLogRecord(PoolId poolId, uint256 idleAmount0, uint256 idleAmount1)
+        private
+        view
+        returns (IReactive.LogRecord memory)
+    {
         bytes32 topicHash = subscriber.IDLE_CAPITAL_DETECTED_TOPIC();
         return IReactive.LogRecord({
             chain_id: block.chainid,
@@ -502,12 +490,7 @@ contract ReactiveAutomationTests is BaseTest {
     }
 
     /// @notice Triggers a sweep via the keeper callback
-    function _triggerSweep(
-        PoolId poolId,
-        uint256 idleAmount0,
-        uint256 idleAmount1,
-        PoolKey memory poolKey
-    ) private {
+    function _triggerSweep(PoolId poolId, uint256 idleAmount0, uint256 idleAmount1, PoolKey memory poolKey) private {
         IReactive.LogRecord memory log = _createLogRecord(poolId, idleAmount0, idleAmount1);
         keeperCallback.react(log);
     }

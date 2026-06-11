@@ -50,7 +50,7 @@ contract IOracleTest is Test {
         // Fast forward time first to ensure we don't underflow at block.timestamp == 0
         vm.warp(1000);
         uint256 customTimestamp = block.timestamp - 100;
-        
+
         oracle.setPriceWithTimestamp(token0, token1, expectedPrice, customTimestamp);
 
         (uint256 price, uint256 timestamp) = oracle.getPrice(token0, token1);
@@ -77,7 +77,7 @@ contract IOracleTest is Test {
     /// @notice Test getPrice returns different values for different token pairs
     function test_GetPriceDifferentTokenPairs() public {
         address token2 = address(0x3);
-        
+
         oracle.setPrice(token0, token1, 1e18);
         oracle.setPrice(token0, token2, 2e18);
 
@@ -105,7 +105,7 @@ contract IOracleTest is Test {
     /// @notice Fuzz test: getPrice handles various price values correctly
     function testFuzz_GetPriceHandlesVariousPrices(uint256 randomPrice) public {
         vm.assume(randomPrice > 0 && randomPrice < type(uint128).max);
-        
+
         oracle.setPrice(token0, token1, randomPrice);
         (uint256 price,) = oracle.getPrice(token0, token1);
 
@@ -117,14 +117,10 @@ contract IOracleTest is Test {
         // This test verifies that IOracle is properly defined as an interface
         // and can be type-cast to different implementations
         IOracle iOracle = IOracle(address(oracle));
-        
+
         // Verify the interface has the expected function selector
         bytes4 expectedSelector = bytes4(keccak256("getPrice(address,address)"));
         // This would be the selector for getPrice
-        assertEq(
-            expectedSelector, 
-            IOracle.getPrice.selector, 
-            "Function selector should match"
-        );
+        assertEq(expectedSelector, IOracle.getPrice.selector, "Function selector should match");
     }
 }
