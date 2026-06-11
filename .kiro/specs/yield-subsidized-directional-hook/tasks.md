@@ -8,7 +8,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
 
 ## Tasks
 
-- [ ] 1. Set up core interfaces and type definitions
+- [x] 1. Set up core interfaces and type definitions
   - [x] 1.1 Create IOracle interface
     - Define `getPrice(address token0, address token1)` function returning price and timestamp
     - Add interface documentation explaining manipulation resistance requirements
@@ -90,7 +90,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Ensure proper handling of fixed-point arithmetic and precision
     - _Requirements: 4.1-4.4_
   
-  - [ ]* 5.3 Write unit tests for oracle integration
+  - [x] 5.3 Write unit tests for oracle integration
     - Test oracle price fetching with mock oracle
     - Test staleness detection
     - Test price sanity bounds checking
@@ -136,7 +136,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
 - [x] 7. Checkpoint - Verify swap fee mechanism
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement idle capital detection
+- [x] 8. Implement idle capital detection
   - [x] 8.1 Create idle capital calculation function
     - Implement `calculateIdleCapital(PoolKey)` public view function
     - Query current active tick from pool's Slot0
@@ -152,7 +152,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - _Requirements: 8.1-8.5_
 
 - [x] 9. Implement flash accounting for capital sweeps
-  - [ ] 9.1 Implement sweepIdleCapital function
+  - [x] 9.1 Implement sweepIdleCapital function
     - Add public visibility and `nonReentrant` modifier
     - Validate pool is registered and not paused
     - Calculate idle capital amounts using `calculateIdleCapital`
@@ -251,14 +251,14 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test subsidy pool balance updates
     - _Requirements: 13.1-13.5, 14.1-14.5, 15.1-15.5, 18.1-18.5, 25.1-25.5_
 
-- [ ] 13. Implement claim token system (ERC-1155)
-  - [ ] 13.1 Implement claim token ID generation
+- [x] 13. Implement claim token system (ERC-1155)
+  - [x] 13.1 Implement claim token ID generation
     - Create `generateClaimTokenId(PoolId, Currency)` internal pure function
     - Encode poolId and token index into unique uint256 ID
     - Use keccak256 hashing for collision resistance
     - _Requirements: 16.1-16.5_
   
-  - [ ] 13.2 Implement claim token redemption
+  - [x] 13.2 Implement claim token redemption
     - Create `redeemLockedCapital(uint256 claimTokenId, uint256 amount)` external function
     - Add `nonReentrant` modifier
     - Validate caller owns sufficient claim token balance
@@ -271,7 +271,7 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Revert with informative error if vault still illiquid
     - _Requirements: 17.1-17.5, 26.1-26.5_
   
-  - [ ] 13.3 Override ERC-1155 _beforeTokenTransfer hook
+  - [x] 13.3 Override ERC-1155 _beforeTokenTransfer hook
     - Update `lpLockedAmounts` tracking when claim tokens are transferred
     - Deduct from sender's locked amount mapping
     - Add to receiver's locked amount mapping
@@ -288,8 +288,8 @@ The implementation follows a dependency-ordered approach, starting with foundati
 - [ ] 14. Checkpoint - Verify subsidy and claim token systems
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Implement administrative functions
-  - [ ] 15.1 Implement pool configuration function
+- [x] 15. Implement administrative functions
+  - [x] 15.1 Implement pool configuration function
     - Create `configurePool(PoolId, PoolConfig)` external function
     - Add `onlyOwner` and `nonReentrant` modifiers
     - Validate pool is registered
@@ -300,14 +300,14 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Emit `PoolConfigured` event
     - _Requirements: 19.1-19.5, 20.1-20.5, 21.1-21.5, 22.1-22.5_
   
-  - [ ] 15.2 Implement pause/unpause functions
+  - [x] 15.2 Implement pause/unpause functions
     - Create `pausePool(PoolId)` external function with `onlyOwner` modifier
     - Create `unpausePool(PoolId)` external function with `onlyOwner` modifier
     - Update `isPaused` flag in pool configs
     - Emit `PoolPaused` or `PoolUnpaused` events
     - _Requirements: 22.1-22.5, 33.1-33.5_
   
-  - [ ]* 15.3 Write unit tests for administrative functions
+  - [x]* 15.3 Write unit tests for administrative functions
     - Test pool configuration with valid parameters
     - Test configuration validation (invalid oracle, mismatched vault assets)
     - Test pause/unpause functionality
@@ -367,6 +367,8 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Sweep capital to generate yield
     - Remove liquidity and verify subsidy distribution
     - Verify ILSubsidyDistributed event
+- [~] 14. Checkpoint - Verify subsidy and claim token systems
+  - Ensure all tests pass, ask the user if questions arise.
     - Test partial subsidy scenario
     - _Requirements: 13.1-13.5, 14.1-14.5, 25.1-25.5, 31.1-31.5_
   
@@ -415,8 +417,8 @@ The implementation follows a dependency-ordered approach, starting with foundati
     - Test paused pool allows liquidity removal without subsidies
     - _Requirements: 33.1-33.5_
 
-- [ ] 21. Implement Reactive Network automation contracts
-  - [ ] 21.1 Create IYieldSubsidizedDirectionalHook interface
+- [x] 21. Implement Reactive Network automation contracts
+  - [x] 21.1 Create IYieldSubsidizedDirectionalHook interface
     - Define interface for automation compatibility
     - Include `sweepIdleCapital`, `getIdleCapital`, `getPoolConfig`, `getSubsidyPool`, `isPoolRegistered` functions
     - Define events: `IdleCapitalDetected`, `CapitalSwept`, `ILSubsidyDistributed`, `ClaimTokenMinted`

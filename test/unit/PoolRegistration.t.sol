@@ -22,32 +22,32 @@ contract PoolRegistrationTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
-        
+
         // Deploy mock PoolManager
         mockPoolManager = new MockPoolManager();
-        
+
         // Deploy hook
         hook = new YieldSubsidizedDirectionalHook(IPoolManager(address(mockPoolManager)));
-        
+
         // Create a test PoolKey
         testPoolKey = createPoolKey(
             address(0x1000), // token0
             address(0x2000), // token1
-            3000,            // 0.3% fee
-            60,              // tick spacing
-            address(hook)    // hooks contract
+            3000, // 0.3% fee
+            60, // tick spacing
+            address(hook) // hooks contract
         );
     }
 
     /// @notice Test getHookPermissions returns correct flags (Req 1.1-1.2)
     function test_GetHookPermissions() public {
         Hooks.Permissions memory permissions = hook.getHookPermissions();
-        
+
         // Verify beforeInitialize, beforeSwap, beforeRemoveLiquidity are true
         assertTrue(permissions.beforeInitialize, "beforeInitialize should be true");
         assertTrue(permissions.beforeSwap, "beforeSwap should be true");
         assertTrue(permissions.beforeRemoveLiquidity, "beforeRemoveLiquidity should be true");
-        
+
         // Verify all other flags are false
         assertFalse(permissions.afterInitialize, "afterInitialize should be false");
         assertFalse(permissions.beforeAddLiquidity, "beforeAddLiquidity should be false");
@@ -65,17 +65,17 @@ contract PoolRegistrationTest is BaseTest {
     /// @notice Test successful pool registration (Req 1.3-1.7)
     function test_SuccessfulPoolRegistration() public {
         PoolId poolId = testPoolKey.toId();
-        
+
         // Verify pool is not registered initially
         assertFalse(hook.registeredPools(poolId), "Pool should not be registered initially");
-        
+
         // Call beforeInitialize from PoolManager
         vm.prank(address(mockPoolManager));
         bytes4 selector = hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
-        
+
         // Verify correct selector returned
         assertEq(selector, hook.beforeInitialize.selector, "Should return beforeInitialize selector");
-        
+
         // Verify pool is now registered
         assertTrue(hook.registeredPools(poolId), "Pool should be registered");
     }
@@ -85,21 +85,23 @@ contract PoolRegistrationTest is BaseTest {
         // Register pool once
         vm.prank(address(mockPoolManager));
         hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
-        
+
         // Attempt to register same pool again - should revert
         vm.prank(address(mockPoolManager));
-        vm.expectRevert(abi.encodeWithSelector(Errors.PoolAlreadyRegistered.selector, PoolId.unwrap(testPoolKey.toId())));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.PoolAlreadyRegistered.selector, PoolId.unwrap(testPoolKey.toId()))
+        );
         hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
     }
 
     /// @notice Test subsidy pool initialization (Req 30.1-30.5)
     function test_SubsidyPoolInitialization() public {
         PoolId poolId = testPoolKey.toId();
-        
+
         // Register pool
         vm.prank(address(mockPoolManager));
         hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
-        
+
         // Verify SubsidyPool struct initialized with zeros
         (
             uint256 totalToken0Yield,
@@ -109,7 +111,7 @@ contract PoolRegistrationTest is BaseTest {
             uint256 vaultShares0,
             uint256 vaultShares1
         ) = hook.subsidyPools(poolId);
-        
+
         assertEq(totalToken0Yield, 0, "totalToken0Yield should be 0");
         assertEq(totalToken1Yield, 0, "totalToken1Yield should be 0");
         assertEq(totalToken0Principal, 0, "totalToken0Principal should be 0");
@@ -121,11 +123,11 @@ contract PoolRegistrationTest is BaseTest {
     /// @notice Test pool registration emits event (Req 30.5)
     function test_PoolRegistrationEmitsEvent() public {
         PoolId poolId = testPoolKey.toId();
-        
+
         // Expect PoolRegistered event
         vm.expectEmit(true, false, false, true, address(hook));
         emit YieldSubsidizedDirectionalHook.PoolRegistered(poolId, testPoolKey, SQRT_PRICE_1_1);
-        
+
         // Register pool
         vm.prank(address(mockPoolManager));
         hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);

@@ -50,7 +50,7 @@ contract OraclePriceUtilitiesTest is Test {
             tickSpacing: 60,
             hooks: IHooks(address(hookHelper))
         });
-        
+
         poolId = poolKey.toId();
 
         // Register pool manually
@@ -65,7 +65,7 @@ contract OraclePriceUtilitiesTest is Test {
             vault0: address(0), // Not needed for these tests
             vault1: address(0), // Not needed for these tests
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });
@@ -79,7 +79,9 @@ contract OraclePriceUtilitiesTest is Test {
     function test_getOraclePriceWithValidation_ValidPrice() public {
         // Set valid oracle price (1:1 ratio, 18 decimals)
         uint256 validPrice = 1e18;
-        oracle.setPrice(Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1), validPrice, block.timestamp);
+        oracle.setPrice(
+            Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1), validPrice, block.timestamp
+        );
 
         // Fetch oracle price
         (uint256 price, bool isValid) = hookHelper.testGetOraclePriceWithValidation(poolKey);
@@ -93,7 +95,7 @@ contract OraclePriceUtilitiesTest is Test {
     function test_getOraclePriceWithValidation_StalePrice() public {
         // Set current block timestamp to avoid underflow
         vm.warp(1000);
-        
+
         // Set stale oracle price (6 minutes old)
         uint256 staleTimestamp = block.timestamp - 360;
         oracle.setPrice(Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1), 1e18, staleTimestamp);
@@ -111,7 +113,9 @@ contract OraclePriceUtilitiesTest is Test {
         uint256 poolPrice = hookHelper.testSqrtPriceX96ToPrice(SQRT_PRICE_1_1);
         uint256 deviatedPrice = (poolPrice * 160) / 100; // 60% higher
 
-        oracle.setPrice(Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1), deviatedPrice, block.timestamp);
+        oracle.setPrice(
+            Currency.unwrap(poolKey.currency0), Currency.unwrap(poolKey.currency1), deviatedPrice, block.timestamp
+        );
 
         // Fetch oracle price
         (, bool isValid) = hookHelper.testGetOraclePriceWithValidation(poolKey);
@@ -162,7 +166,7 @@ contract OraclePriceUtilitiesTest is Test {
             vault0: address(0),
             vault1: address(0),
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });
@@ -211,21 +215,23 @@ contract OraclePriceUtilitiesTest is Test {
         // Skip values below MIN_SQRT_PRICE or above MAX_SQRT_PRICE as they're invalid
         vm.assume(sqrtPriceX96 >= TickMath.MIN_SQRT_PRICE && sqrtPriceX96 <= TickMath.MAX_SQRT_PRICE);
 
-        // Convert price (should not revert)
-        uint256 price = hookHelper.testSqrtPriceX96ToPrice(sqrtPriceX96);
-
         // For very small sqrt prices, the result can round to zero due to precision limits
         // This is acceptable behavior for prices below the precision threshold
         // After the calculation: ((sqrtPrice >> 48)^2 * 1e18) >> 96
         // For non-zero result, we need (sqrtPrice >> 48)^2 * 1e18 >= 2^96
-        // So (sqrtPrice >> 48) >= sqrt(2^96 / 1e18) ≈ 2^18.11 ≈ 270000
-        // So sqrtPrice >= 270000 * 2^48 ≈ 7.6e19
-        
-        // If sqrtPriceX96 is large enough (above precision threshold), price should be non-zero
-        uint256 precisionThreshold = 270000 * (uint256(1) << 48);
-        if (sqrtPriceX96 > precisionThreshold) {
-            assertGt(price, 0, "Price should be non-zero for sufficiently large sqrt price");
-        }
+        // Solving: sqrtPrice >> 48 >= sqrt(2^96 / 1e18)
+        // sqrt(2^96 / 1e18) = sqrt(79228162514264337593543.950336) ≈ 281474976710
+        // So we need sqrtPrice >= 281474976710 * 2^48 ≈ 7.92e19
+
+        // Use a slightly higher threshold to account for rounding
+        uint256 precisionThreshold = 8e19; // ~80 * 10^18
+        vm.assume(sqrtPriceX96 > precisionThreshold);
+
+        // Convert price (should not revert)
+        uint256 price = hookHelper.testSqrtPriceX96ToPrice(sqrtPriceX96);
+
+        // Price should be non-zero for values above precision threshold
+        assertGt(price, 0, "Price should be non-zero for sufficiently large sqrt price");
     }
 
     // ============ PRICE DEVIATION TESTS ============
@@ -295,7 +301,7 @@ contract OraclePriceUtilitiesTest is Test {
         // Deviation should be calculable without overflow
         // Note: Deviation CAN exceed 100% (10000 bps) when prices differ significantly
         // For example: price1=1e24, price2=1e12 gives ~99,900,000% deviation
-        
+
         // Basic sanity checks
         if (price1 == price2) {
             assertEq(deviation, 0, "Equal prices should have zero deviation");

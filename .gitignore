@@ -10,8 +10,8 @@ out/
 # Dotenv file
 .env
 
-# Dependencies (installed via forge install)
-lib/
+# Dependencies are tracked as git submodules for CI compatibility
+# Do not add lib/ here — submodules must remain in the git index
 
 # Kiro spec files (development artifacts)
 .kiro/

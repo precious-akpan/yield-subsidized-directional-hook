@@ -18,6 +18,10 @@ import {DataTypes} from "./libraries/DataTypes.sol";
 import {Errors} from "./libraries/Errors.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 import {IExternalVault} from "./interfaces/IExternalVault.sol";
+
+/// @dev Event emitted when idle capital is detected in a pool
+/// @dev Enables Reactive automation to monitor and trigger automated sweeps
+event IdleCapitalDetected(PoolId indexed poolId, uint256 idleAmount0, uint256 idleAmount1, PoolKey poolKey);
 import {SqrtPriceMath} from "v4-core/libraries/SqrtPriceMath.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {IERC20 as IERC20Token} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -62,6 +66,10 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     /// @notice Tracks which pools have been registered via beforeInitialize
     /// @dev Prevents callback spoofing by validating pool existence
     mapping(PoolId => bool) public registeredPools;
+
+    /// @notice Array of registered pool IDs for enumeration
+    /// @dev Used by getRegisteredPools() to return all registered pools
+    PoolId[] private _registeredPools;
 
     /// @notice Configuration parameters for each registered pool
     /// @dev Contains oracle, vault addresses, fee parameters, and pause status
@@ -129,6 +137,34 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         uint256 deviation
     );
 
+    /// @notice Emitted when a pool configuration is updated
+    /// @param poolId The unique identifier of the pool
+    /// @param oracle The oracle contract address
+    /// @param vault0 The vault contract address for token0
+    /// @param vault1 The vault contract address for token1
+    /// @param baseFeeBps The baseline fee in basis points
+    /// @param maxFeeMultiplier The maximum fee multiplier
+    /// @param deviationThresholdBps The price deviation threshold
+    event PoolConfigured(
+        PoolId indexed poolId,
+        address oracle,
+        address vault0,
+        address vault1,
+        uint24 baseFeeBps,
+        uint24 maxFeeMultiplier,
+        uint24 deviationThresholdBps
+    );
+
+    /// @notice Emitted when a pool is paused
+    /// @param poolId The unique identifier of the paused pool
+    /// @param timestamp The timestamp when the pool was paused
+    event PoolPaused(PoolId indexed poolId, uint256 timestamp);
+
+    /// @notice Emitted when a pool is unpaused
+    /// @param poolId The unique identifier of the unpaused pool
+    /// @param timestamp The timestamp when the pool was unpaused
+    event PoolUnpaused(PoolId indexed poolId, uint256 timestamp);
+
     // ============ CONSTRUCTOR ============
 
     /// @notice Initializes the hook with PoolManager reference
@@ -153,6 +189,126 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         owner = newOwner;
 
         emit OwnershipTransferred(previousOwner, newOwner);
+    }
+
+    /// @notice Configures pool parameters including oracle, vaults, and fee scaling
+    /// @dev Can only be called by the owner with onlyOwner and nonReentrant modifiers
+    /// @dev Validates all inputs before storing configuration
+    /// @param poolId The unique identifier of the pool to configure
+    /// @param config The PoolConfig struct containing oracle, vaults, and fee parameters
+    /// @custom:requirements Validates: 19.1-19.5, 20.1-20.5, 21.1-21.5, 22.1-22.5
+    function configurePool(PoolId poolId, DataTypes.PoolConfig calldata config) external onlyOwner nonReentrant {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+
+        // Note: Oracle validation at configure time is intentionally skipped.
+        // Per IOracle interface: "Implementations should revert if price data is unavailable or invalid"
+        // Using a synthetic (0,0) pair would incorrectly reject valid oracles that properly validate token pairs.
+        // Oracle is validated at runtime with actual pool tokens in getOraclePriceWithValidation(),
+        // which uses try-catch to gracefully handle oracle failures.
+
+        // Validate vault0 implements IExternalVault interface if non-zero
+        if (config.vault0 != address(0)) {
+            // Validate vault implements required interface by checking asset()
+            try IExternalVault(config.vault0).asset() returns (
+                address
+            ) {
+            // Vault must be retrievable in the pool key to validate asset match
+            // For now, we store this for later validation during sweeps
+            }
+            catch {
+                revert Errors.InvalidVault(config.vault0);
+            }
+        }
+
+        // Validate vault1 implements IExternalVault interface if non-zero
+        if (config.vault1 != address(0)) {
+            // Validate vault implements required interface by checking asset()
+            try IExternalVault(config.vault1).asset() returns (
+                address
+            ) {
+            // Vault must be retrievable in the pool key to validate asset match
+            // For now, we store this for later validation during sweeps
+            }
+            catch {
+                revert Errors.InvalidVault(config.vault1);
+            }
+        }
+
+        // Validate fee parameters: maxFeeMultiplier >= BPS_DENOMINATOR (1.0x)
+        // Multipliers are in basis-point format where 10000 == 1.0x
+        // Values below 10000 would REDUCE fees under toxic conditions
+        if (config.maxFeeMultiplier < BPS_DENOMINATOR) {
+            revert Errors.InvalidConfiguration("maxFeeMultiplier must be >= 10000 (1.0x)");
+        }
+
+        // Validate fee parameters are within reasonable bounds
+        // baseFeeBps should be <= 10000 (100%)
+        if (config.baseFeeBps > 10000) {
+            revert Errors.InvalidConfiguration("baseFeeBps exceeds 100%");
+        }
+
+        // maxFeeMultiplier should be <= 100000 (1000%)
+        if (config.maxFeeMultiplier > 100000) {
+            revert Errors.InvalidConfiguration("maxFeeMultiplier exceeds 1000%");
+        }
+
+        // deviationThresholdBps should be > 0 and <= 10000
+        if (config.deviationThresholdBps == 0 || config.deviationThresholdBps > 10000) {
+            revert Errors.InvalidConfiguration("deviationThresholdBps must be between 1 and 10000");
+        }
+
+        // Store configuration in poolConfigs mapping
+        poolConfigs[poolId] = config;
+
+        // Emit PoolConfigured event
+        emit PoolConfigured(
+            poolId,
+            config.oracle,
+            config.vault0,
+            config.vault1,
+            config.baseFeeBps,
+            config.maxFeeMultiplier,
+            config.deviationThresholdBps
+        );
+    }
+
+    /// @notice Pauses a pool, disabling directional fee scaling and capital sweeps
+    /// @dev Can only be called by the owner
+    /// @dev Sets isPaused flag in pool configuration
+    /// @param poolId The unique identifier of the pool to pause
+    /// @custom:requirements Validates: 22.1-22.5, 33.1-33.5
+    function pausePool(PoolId poolId) external onlyOwner {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+
+        // Update isPaused flag
+        poolConfigs[poolId].isPaused = true;
+
+        // Emit PoolPaused event
+        emit PoolPaused(poolId, block.timestamp);
+    }
+
+    /// @notice Unpauses a pool, restoring directional fee scaling and capital sweeps
+    /// @dev Can only be called by the owner
+    /// @dev Clears isPaused flag in pool configuration
+    /// @param poolId The unique identifier of the pool to unpause
+    /// @custom:requirements Validates: 22.1-22.5, 33.1-33.5
+    function unpausePool(PoolId poolId) external onlyOwner {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+
+        // Update isPaused flag
+        poolConfigs[poolId].isPaused = false;
+
+        // Emit PoolUnpaused event
+        emit PoolUnpaused(poolId, block.timestamp);
     }
 
     // ============ HOOK PERMISSIONS ============
@@ -203,6 +359,9 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
 
         // Register the pool
         registeredPools[poolId] = true;
+
+        // Add pool ID to registered pools array (avoid duplicates)
+        _registeredPools.push(poolId);
 
         // Initialize empty SubsidyPool for this pool
         subsidyPools[poolId] = DataTypes.SubsidyPool({
@@ -849,6 +1008,10 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         // Calculate idle capital amounts
         (uint256 idleAmount0, uint256 idleAmount1) = calculateIdleCapital(key, tickLowers, tickUppers, liquidityAmounts);
 
+        // Emit event for Reactive automation to monitor
+        // This enables ReactiveSubscriber to detect idle capital and trigger automated sweeps
+        emit IdleCapitalDetected(poolId, idleAmount0, idleAmount1, key);
+
         // Validate amounts exceed minimum sweep threshold
         // At least one token must meet the threshold
         if (idleAmount0 < 0.1 ether && idleAmount1 < 0.1 ether) {
@@ -1403,5 +1566,94 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     modifier onlyOwner() {
         if (msg.sender != owner) revert Errors.Unauthorized();
         _;
+    }
+
+    // ============ UTILITY AND VIEW FUNCTIONS ============
+
+    /// @notice Returns the subsidy pool balance for a given pool
+    /// @dev Provides yield and principal amounts for both tokens
+    /// @param poolId The pool identifier
+    /// @return SubsidyPool struct containing yield and principal amounts
+    /// @custom:requirements Validates: 12.4, 12.5
+    function getSubsidyPoolBalance(PoolId poolId) external view returns (DataTypes.SubsidyPool memory) {
+        return subsidyPools[poolId];
+    }
+
+    /// @notice Calculates the LP's claimable subsidy from the pool's subsidy pool
+    /// @dev Calculates proportional share based on locked capital vs total locked capital
+    /// @param lp The liquidity provider address
+    /// @param poolId The pool identifier
+    /// @return claimable0 The claimable subsidy amount for token0
+    /// @return claimable1 The claimable subsidy amount for token1
+    /// @custom:requirements Validates: 12.4, 12.5
+    function getLPClaimableSubsidy(address lp, PoolId poolId)
+        external
+        view
+        returns (uint256 claimable0, uint256 claimable1)
+    {
+        // Validate pool is registered
+        if (!registeredPools[poolId]) {
+            return (0, 0);
+        }
+
+        // Get the LP's position to determine their locked capital
+        DataTypes.LPPosition memory position = lpPositions[lp][poolId][0];
+
+        // If LP has no position or liquidity, they have no claim
+        if (position.liquidityAmount == 0) {
+            return (0, 0);
+        }
+
+        // Get total locked capital from subsidy pool (using principal as proxy for locked capital)
+        DataTypes.SubsidyPool memory pool = subsidyPools[poolId];
+        uint256 totalLocked0 = pool.totalToken0Principal;
+        uint256 totalLocked1 = pool.totalToken1Principal;
+
+        // If no capital is locked in the pool, return zero
+        if (totalLocked0 == 0 && totalLocked1 == 0) {
+            return (0, 0);
+        }
+
+        // Calculate LP's proportional share based on their initial deposit vs total locked
+        // For token0
+        if (position.token0Initial > 0 && totalLocked0 > 0) {
+            // LP's share = (LP's initial / total locked) * available yield
+            uint256 availableYield0 = calculateAvailableYield(poolId, true);
+            if (availableYield0 > 0) {
+                // Use ratio of LP's initial deposit to total locked
+                uint256 lpShare0 = FullMath.mulDiv(availableYield0, position.token0Initial, totalLocked0);
+                claimable0 = lpShare0;
+            }
+        }
+
+        // For token1
+        if (position.token1Initial > 0 && totalLocked1 > 0) {
+            // LP's share = (LP's initial / total locked) * available yield
+            uint256 availableYield1 = calculateAvailableYield(poolId, false);
+            if (availableYield1 > 0) {
+                // Use ratio of LP's initial deposit to total locked
+                uint256 lpShare1 = FullMath.mulDiv(availableYield1, position.token1Initial, totalLocked1);
+                claimable1 = lpShare1;
+            }
+        }
+
+        return (claimable0, claimable1);
+    }
+
+    /// @notice Returns all registered pool IDs
+    /// @dev Provides enumeration capability for all pools that have been registered
+    /// @return Array of all registered PoolId values
+    /// @custom:requirements Validates: 32.5
+    function getRegisteredPools() external view returns (PoolId[] memory) {
+        return _registeredPools;
+    }
+
+    /// @notice Returns whether a pool is registered
+    /// @dev Simple view function that checks the registeredPools mapping
+    /// @param poolId The pool identifier
+    /// @return bool True if the pool is registered, false otherwise
+    /// @custom:requirements Validates: 32.5
+    function isPoolRegistered(PoolId poolId) external view returns (bool) {
+        return registeredPools[poolId];
     }
 }

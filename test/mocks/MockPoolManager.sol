@@ -15,13 +15,7 @@ contract MockPoolManager {
     bytes32 private constant POOLS_SLOT = bytes32(uint256(6));
 
     /// @notice Set slot0 data for a pool (for testing)
-    function setSlot0(
-        PoolId poolId,
-        uint160 sqrtPriceX96,
-        int24 tick,
-        uint24 protocolFee,
-        uint24 lpFee
-    ) external {
+    function setSlot0(PoolId poolId, uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee) external {
         // Pack the data in the same format as v4-core
         bytes32 data;
         assembly ("memory-safe") {
@@ -30,7 +24,7 @@ contract MockPoolManager {
             data := or(data, shl(184, and(protocolFee, 0xFFFFFF)))
             data := or(data, shl(208, and(lpFee, 0xFFFFFF)))
         }
-        
+
         // Calculate the state slot using the same logic as StateLibrary
         bytes32 stateSlot = keccak256(abi.encodePacked(PoolId.unwrap(poolId), POOLS_SLOT));
         slots[stateSlot] = data;
@@ -40,7 +34,7 @@ contract MockPoolManager {
     function extsload(bytes32 slot) external view returns (bytes32) {
         return slots[slot];
     }
-    
+
     /// @notice Set arbitrary slot data (for advanced test scenarios)
     function setSlot(bytes32 slot, bytes32 value) external {
         slots[slot] = value;

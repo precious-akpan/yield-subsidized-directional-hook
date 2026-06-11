@@ -27,31 +27,31 @@ contract CapitalSweepTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
-        
+
         // Deploy mock contracts
         poolManager = new MockPoolManager();
         token0 = new MockERC20("Token0", "TK0", 18);
         token1 = new MockERC20("Token1", "TK1", 18);
         vault0 = new MockERC4626Vault(address(token0));
         vault1 = new MockERC4626Vault(address(token1));
-        
+
         // Deploy hook
         hook = new YieldSubsidizedDirectionalHook(IPoolManager(address(poolManager)));
-        
+
         // Create test pool key
         testPoolKey = createPoolKey(
             address(token0),
             address(token1),
             3000, // 0.3% fee
-            60,   // tick spacing
+            60, // tick spacing
             address(hook)
         );
         testPoolId = testPoolKey.toId();
-        
+
         // Initialize pool via hook's beforeInitialize
         vm.prank(address(poolManager));
         hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
-        
+
         // Set initial pool state in mock pool manager
         // Price 1:1, tick 0
         poolManager.setSlot0(testPoolId, SQRT_PRICE_1_1, 0, 0, 0);
@@ -61,31 +61,27 @@ contract CapitalSweepTest is BaseTest {
     function test_IdleCapitalDetection_OutOfRange() public {
         // Setup: Create positions that are out of range
         // Current tick is 0, create positions below (all token1) and above (all token0)
-        
+
         int24[] memory tickLowers = new int24[](2);
         int24[] memory tickUppers = new int24[](2);
         uint128[] memory liquidityAmounts = new uint128[](2);
-        
+
         // Position 1: Below current price (tick -120 to -60)
         // This position is entirely in token1
         tickLowers[0] = -120;
         tickUppers[0] = -60;
         liquidityAmounts[0] = 1000000000000000000; // 1e18
-        
+
         // Position 2: Above current price (tick 60 to 120)
         // This position is entirely in token0
         tickLowers[1] = 60;
         tickUppers[1] = 120;
         liquidityAmounts[1] = 2000000000000000000; // 2e18
-        
+
         // Call calculateIdleCapital
-        (uint256 idleAmount0, uint256 idleAmount1) = hook.calculateIdleCapital(
-            testPoolKey,
-            tickLowers,
-            tickUppers,
-            liquidityAmounts
-        );
-        
+        (uint256 idleAmount0, uint256 idleAmount1) =
+            hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
+
         // Verify correct idle amounts returned
         // Position above current price should contribute to token0
         assertGt(idleAmount0, 0, "Should have idle token0");
@@ -96,29 +92,25 @@ contract CapitalSweepTest is BaseTest {
     /// @notice Test idle capital detection returns zero for in-range positions (Req 8.3, 8.8)
     function test_IdleCapitalDetection_InRange() public {
         // Setup: Create positions that are in range (include current tick 0)
-        
+
         int24[] memory tickLowers = new int24[](2);
         int24[] memory tickUppers = new int24[](2);
         uint128[] memory liquidityAmounts = new uint128[](2);
-        
+
         // Position 1: Includes current tick (tick -60 to 60)
         tickLowers[0] = -60;
         tickUppers[0] = 60;
         liquidityAmounts[0] = 1000000000000000000; // 1e18
-        
+
         // Position 2: Also includes current tick (tick -120 to 120)
         tickLowers[1] = -120;
         tickUppers[1] = 120;
         liquidityAmounts[1] = 2000000000000000000; // 2e18
-        
+
         // Call calculateIdleCapital
-        (uint256 idleAmount0, uint256 idleAmount1) = hook.calculateIdleCapital(
-            testPoolKey,
-            tickLowers,
-            tickUppers,
-            liquidityAmounts
-        );
-        
+        (uint256 idleAmount0, uint256 idleAmount1) =
+            hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
+
         // Verify zero idle amounts for in-range positions
         assertEq(idleAmount0, 0, "Should have zero idle token0");
         assertEq(idleAmount1, 0, "Should have zero idle token1");
@@ -127,76 +119,68 @@ contract CapitalSweepTest is BaseTest {
     /// @notice Test idle capital detection with mixed positions (Req 8.5)
     function test_IdleCapitalDetection_MixedPositions() public {
         // Setup: Create mix of in-range and out-of-range positions
-        
+
         int24[] memory tickLowers = new int24[](3);
         int24[] memory tickUppers = new int24[](3);
         uint128[] memory liquidityAmounts = new uint128[](3);
-        
+
         // Position 1: In-range (tick -60 to 60)
         tickLowers[0] = -60;
         tickUppers[0] = 60;
         liquidityAmounts[0] = 1000000000000000000; // 1e18
-        
+
         // Position 2: Out of range below (tick -180 to -120)
         tickLowers[1] = -180;
         tickUppers[1] = -120;
         liquidityAmounts[1] = 500000000000000000; // 0.5e18
-        
+
         // Position 3: Out of range above (tick 120 to 180)
         tickLowers[2] = 120;
         tickUppers[2] = 180;
         liquidityAmounts[2] = 750000000000000000; // 0.75e18
-        
+
         // Call calculateIdleCapital
-        (uint256 idleAmount0, uint256 idleAmount1) = hook.calculateIdleCapital(
-            testPoolKey,
-            tickLowers,
-            tickUppers,
-            liquidityAmounts
-        );
-        
+        (uint256 idleAmount0, uint256 idleAmount1) =
+            hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
+
         // Verify only out-of-range positions counted
         // Position above should contribute to token0
         assertGt(idleAmount0, 0, "Should have idle token0 from position above");
         // Position below should contribute to token1
         assertGt(idleAmount1, 0, "Should have idle token1 from position below");
     }
-    
+
     /// @notice Test idle capital detection with zero liquidity positions (edge case)
     function test_IdleCapitalDetection_ZeroLiquidity() public {
         int24[] memory tickLowers = new int24[](2);
         int24[] memory tickUppers = new int24[](2);
         uint128[] memory liquidityAmounts = new uint128[](2);
-        
+
         // Position 1: Out of range but zero liquidity
         tickLowers[0] = 60;
         tickUppers[0] = 120;
         liquidityAmounts[0] = 0;
-        
+
         // Position 2: Out of range with liquidity
         tickLowers[1] = -120;
         tickUppers[1] = -60;
         liquidityAmounts[1] = 1000000000000000000; // 1e18
-        
+
         // Call calculateIdleCapital
-        (uint256 idleAmount0, uint256 idleAmount1) = hook.calculateIdleCapital(
-            testPoolKey,
-            tickLowers,
-            tickUppers,
-            liquidityAmounts
-        );
-        
+        (uint256 idleAmount0, uint256 idleAmount1) =
+            hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
+
         // Verify zero liquidity position doesn't contribute
         assertEq(idleAmount0, 0, "Zero liquidity position should not contribute to token0");
         assertGt(idleAmount1, 0, "Should have idle token1 from second position");
     }
-    
+
     /// @notice Test revert when array lengths don't match (Req 8.1)
     function test_RevertWhen_ArrayLengthsMismatch() public {
         int24[] memory tickLowers = new int24[](2);
         int24[] memory tickUppers = new int24[](3); // Mismatch!
         uint128[] memory liquidityAmounts = new uint128[](2);
-        
+
         tickLowers[0] = -60;
         tickLowers[1] = 60;
         tickUppers[0] = -30;
@@ -204,46 +188,28 @@ contract CapitalSweepTest is BaseTest {
         tickUppers[2] = 120;
         liquidityAmounts[0] = 1e18;
         liquidityAmounts[1] = 2e18;
-        
+
         // Expect revert with InvalidConfiguration error
-        vm.expectRevert(
-            abi.encodeWithSignature("InvalidConfiguration(string)", "Position array lengths must match")
-        );
-        hook.calculateIdleCapital(
-            testPoolKey,
-            tickLowers,
-            tickUppers,
-            liquidityAmounts
-        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidConfiguration(string)", "Position array lengths must match"));
+        hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
     }
-    
+
     /// @notice Test revert when pool not registered (Req 8.2)
     function test_RevertWhen_PoolNotRegistered() public {
         // Create unregistered pool key
-        PoolKey memory unregisteredPoolKey = createPoolKey(
-            address(0x999),
-            address(0x888),
-            3000,
-            60,
-            address(hook)
-        );
-        
+        PoolKey memory unregisteredPoolKey = createPoolKey(address(0x999), address(0x888), 3000, 60, address(hook));
+
         int24[] memory tickLowers = new int24[](1);
         int24[] memory tickUppers = new int24[](1);
         uint128[] memory liquidityAmounts = new uint128[](1);
-        
+
         tickLowers[0] = -60;
         tickUppers[0] = 60;
         liquidityAmounts[0] = 1e18;
-        
+
         // Expect revert with PoolNotRegistered error
         vm.expectRevert();
-        hook.calculateIdleCapital(
-            unregisteredPoolKey,
-            tickLowers,
-            tickUppers,
-            liquidityAmounts
-        );
+        hook.calculateIdleCapital(unregisteredPoolKey, tickLowers, tickUppers, liquidityAmounts);
     }
 
     /// @notice Test successful capital sweep (Req 9.1-9.3)

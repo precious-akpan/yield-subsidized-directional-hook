@@ -33,17 +33,13 @@ contract ILCalculationTest is BaseTest {
         int24 tickLower = -1000;
         int24 tickUpper = 1000;
         uint256 liquidity = 1e18;
-        
+
         // Current price at tick 0 (1:1 ratio, within range)
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
-        (uint256 amount0, uint256 amount1) = hookHelper.testCalculateTokenAmounts(
-            liquidity,
-            tickLower,
-            tickUpper,
-            sqrtPriceX96
-        );
-        
+
+        (uint256 amount0, uint256 amount1) =
+            hookHelper.testCalculateTokenAmounts(liquidity, tickLower, tickUpper, sqrtPriceX96);
+
         // When price is in range, should have both tokens
         assertTrue(amount0 > 0, "Should have token0");
         assertTrue(amount1 > 0, "Should have token1");
@@ -55,17 +51,13 @@ contract ILCalculationTest is BaseTest {
         int24 tickLower = 1000;
         int24 tickUpper = 2000;
         uint256 liquidity = 1e18;
-        
+
         // Current price at tick 0 (below range)
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
-        (uint256 amount0, uint256 amount1) = hookHelper.testCalculateTokenAmounts(
-            liquidity,
-            tickLower,
-            tickUpper,
-            sqrtPriceX96
-        );
-        
+
+        (uint256 amount0, uint256 amount1) =
+            hookHelper.testCalculateTokenAmounts(liquidity, tickLower, tickUpper, sqrtPriceX96);
+
         // When price is below range, should have only token0
         assertTrue(amount0 > 0, "Should have token0");
         assertEq(amount1, 0, "Should have no token1");
@@ -77,17 +69,13 @@ contract ILCalculationTest is BaseTest {
         int24 tickLower = -2000;
         int24 tickUpper = -1000;
         uint256 liquidity = 1e18;
-        
+
         // Current price at tick 0 (above range)
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
-        (uint256 amount0, uint256 amount1) = hookHelper.testCalculateTokenAmounts(
-            liquidity,
-            tickLower,
-            tickUpper,
-            sqrtPriceX96
-        );
-        
+
+        (uint256 amount0, uint256 amount1) =
+            hookHelper.testCalculateTokenAmounts(liquidity, tickLower, tickUpper, sqrtPriceX96);
+
         // When price is above range, should have only token1
         assertEq(amount0, 0, "Should have no token0");
         assertTrue(amount1 > 0, "Should have token1");
@@ -99,7 +87,7 @@ contract ILCalculationTest is BaseTest {
     function test_CalculateImpermanentLoss_WithLoss() public view {
         // Create position with initial 1:1 price ratio
         uint160 initialSqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
+
         DataTypes.LPPosition memory position = DataTypes.LPPosition({
             token0Initial: 1e18,
             token1Initial: 1e18,
@@ -109,16 +97,13 @@ contract ILCalculationTest is BaseTest {
             liquidityAmount: 1e18,
             lastUpdateTimestamp: block.timestamp
         });
-        
+
         // Price moves to 2:1 (token1 becomes more valuable)
         // This is tick ~6932 (log_1.0001(2) * 10000 ≈ 6931.47)
         uint160 currentSqrtPriceX96 = TickMath.getSqrtPriceAtTick(6931);
-        
-        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(
-            position,
-            currentSqrtPriceX96
-        );
-        
+
+        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(position, currentSqrtPriceX96);
+
         // Should have some IL when price moves significantly
         assertTrue(ilToken0 > 0 || ilToken1 > 0, "Should have impermanent loss");
     }
@@ -127,7 +112,7 @@ contract ILCalculationTest is BaseTest {
     function test_CalculateImpermanentLoss_NoLoss_Profitable() public view {
         // Create position with initial price
         uint160 initialSqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
+
         // Artificially set initial tokens higher than what position would yield
         // This simulates a scenario where the position is profitable
         DataTypes.LPPosition memory position = DataTypes.LPPosition({
@@ -139,15 +124,12 @@ contract ILCalculationTest is BaseTest {
             liquidityAmount: 1e19, // Large liquidity (simulating value increase)
             lastUpdateTimestamp: block.timestamp
         });
-        
+
         // Current price same as initial
         uint160 currentSqrtPriceX96 = initialSqrtPriceX96;
-        
-        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(
-            position,
-            currentSqrtPriceX96
-        );
-        
+
+        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(position, currentSqrtPriceX96);
+
         // IL should be zero when profitable (per requirement 13.4)
         assertEq(ilToken0, 0, "IL token0 should be zero");
         assertEq(ilToken1, 0, "IL token1 should be zero");
@@ -156,19 +138,15 @@ contract ILCalculationTest is BaseTest {
     /// @notice Test IL calculation with no price change
     function test_CalculateImpermanentLoss_NoPriceChange() public view {
         uint160 initialSqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
+
         // Calculate what the actual token amounts would be for this liquidity
         uint256 liquidity = 1e18;
         int24 tickLower = -1000;
         int24 tickUpper = 1000;
-        
-        (uint256 token0Initial, uint256 token1Initial) = hookHelper.testCalculateTokenAmounts(
-            liquidity,
-            tickLower,
-            tickUpper,
-            initialSqrtPriceX96
-        );
-        
+
+        (uint256 token0Initial, uint256 token1Initial) =
+            hookHelper.testCalculateTokenAmounts(liquidity, tickLower, tickUpper, initialSqrtPriceX96);
+
         DataTypes.LPPosition memory position = DataTypes.LPPosition({
             token0Initial: token0Initial,
             token1Initial: token1Initial,
@@ -178,15 +156,12 @@ contract ILCalculationTest is BaseTest {
             liquidityAmount: liquidity,
             lastUpdateTimestamp: block.timestamp
         });
-        
+
         // Current price same as initial
         uint160 currentSqrtPriceX96 = initialSqrtPriceX96;
-        
-        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(
-            position,
-            currentSqrtPriceX96
-        );
-        
+
+        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(position, currentSqrtPriceX96);
+
         // With no price change and consistent initial amounts, IL should be zero
         assertEq(ilToken0, 0, "IL token0 should be zero");
         assertEq(ilToken1, 0, "IL token1 should be zero");
@@ -195,7 +170,7 @@ contract ILCalculationTest is BaseTest {
     /// @notice Test IL calculation with position out of range
     function test_CalculateImpermanentLoss_OutOfRange() public view {
         uint160 initialSqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
+
         DataTypes.LPPosition memory position = DataTypes.LPPosition({
             token0Initial: 1e18,
             token1Initial: 1e18,
@@ -205,15 +180,12 @@ contract ILCalculationTest is BaseTest {
             liquidityAmount: 1e18,
             lastUpdateTimestamp: block.timestamp
         });
-        
+
         // Price stays at tick 0 (out of range)
         uint160 currentSqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
-        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(
-            position,
-            currentSqrtPriceX96
-        );
-        
+
+        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(position, currentSqrtPriceX96);
+
         // Out of range positions should still calculate IL correctly
         // The position is all in token0, while initial had both tokens
         assertTrue(ilToken0 > 0 || ilToken1 > 0, "Should calculate IL for out-of-range position");
@@ -222,7 +194,7 @@ contract ILCalculationTest is BaseTest {
     /// @notice Test IL calculation with significant price increase
     function test_CalculateImpermanentLoss_LargePriceIncrease() public view {
         uint160 initialSqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        
+
         DataTypes.LPPosition memory position = DataTypes.LPPosition({
             token0Initial: 1e18,
             token1Initial: 1e18,
@@ -232,15 +204,12 @@ contract ILCalculationTest is BaseTest {
             liquidityAmount: 1e18,
             lastUpdateTimestamp: block.timestamp
         });
-        
+
         // Large price increase to ~4:1 ratio
         uint160 currentSqrtPriceX96 = TickMath.getSqrtPriceAtTick(13862);
-        
-        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(
-            position,
-            currentSqrtPriceX96
-        );
-        
+
+        (uint256 ilToken0, uint256 ilToken1) = hookHelper.testCalculateImpermanentLoss(position, currentSqrtPriceX96);
+
         // Should have significant IL with large price move
         assertTrue(ilToken0 > 0 || ilToken1 > 0, "Should have impermanent loss");
     }
@@ -260,10 +229,11 @@ contract ILCalculationHelper is YieldSubsidizedDirectionalHook {
         return calculateTokenAmounts(liquidityAmount, tickLower, tickUpper, currentSqrtPriceX96);
     }
 
-    function testCalculateImpermanentLoss(
-        DataTypes.LPPosition memory position,
-        uint160 currentSqrtPriceX96
-    ) external pure returns (uint256 ilToken0, uint256 ilToken1) {
+    function testCalculateImpermanentLoss(DataTypes.LPPosition memory position, uint160 currentSqrtPriceX96)
+        external
+        pure
+        returns (uint256 ilToken0, uint256 ilToken1)
+    {
         return calculateImpermanentLoss(position, currentSqrtPriceX96);
     }
 }

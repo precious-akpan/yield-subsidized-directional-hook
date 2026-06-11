@@ -19,32 +19,21 @@ contract YieldSubsidizedDirectionalHookHelper is YieldSubsidizedDirectionalHook 
 
     /// @notice Exposes getOraclePriceWithValidation for testing
     /// @dev Calls internal function directly as inheritance allows access
-    function testGetOraclePriceWithValidation(PoolKey calldata key) 
-        public 
-        returns (uint256 price, bool isValid) 
-    {
+    function testGetOraclePriceWithValidation(PoolKey calldata key) public returns (uint256 price, bool isValid) {
         // Call internal function (accessible via inheritance)
         return YieldSubsidizedDirectionalHook.getOraclePriceWithValidation(key);
     }
 
     /// @notice Exposes sqrtPriceX96ToPrice for testing
     /// @dev Calls internal function directly as inheritance allows access
-    function testSqrtPriceX96ToPrice(uint160 sqrtPriceX96) 
-        public 
-        pure 
-        returns (uint256 price) 
-    {
+    function testSqrtPriceX96ToPrice(uint160 sqrtPriceX96) public pure returns (uint256 price) {
         // Call internal function (accessible via inheritance)
         return YieldSubsidizedDirectionalHook.sqrtPriceX96ToPrice(sqrtPriceX96);
     }
 
     /// @notice Exposes calculateDeviation for testing
     /// @dev Calls internal function directly as inheritance allows access
-    function testCalculateDeviation(uint256 price1, uint256 price2) 
-        public 
-        pure 
-        returns (uint256 deviationBps) 
-    {
+    function testCalculateDeviation(uint256 price1, uint256 price2) public pure returns (uint256 deviationBps) {
         // Call internal function (accessible via inheritance)
         return YieldSubsidizedDirectionalHook.calculateDeviation(price1, price2);
     }
@@ -65,11 +54,7 @@ contract YieldSubsidizedDirectionalHookHelper is YieldSubsidizedDirectionalHook 
 
     /// @notice Exposes trackLPPosition for testing
     /// @dev Calls internal function directly as inheritance allows access
-    function testTrackLPPosition(
-        address lp,
-        PoolId poolId,
-        DataTypes.LPPosition memory position
-    ) external {
+    function testTrackLPPosition(address lp, PoolId poolId, DataTypes.LPPosition memory position) external {
         // Call internal function (accessible via inheritance)
         return YieldSubsidizedDirectionalHook.trackLPPosition(lp, poolId, position);
     }
