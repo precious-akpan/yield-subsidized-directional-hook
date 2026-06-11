@@ -29,10 +29,6 @@ library Errors {
     /// @param reason Description of the configuration error
     error InvalidConfiguration(string reason);
 
-    /// @notice Thrown when an oracle address does not implement the required interface
-    /// @param oracle The invalid oracle address
-    error InvalidOracle(address oracle);
-
     /// @notice Thrown when a vault address does not implement the required interface
     /// @param vault The invalid vault address
     error InvalidVault(address vault);

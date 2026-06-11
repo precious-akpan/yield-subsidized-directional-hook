@@ -195,20 +195,11 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
             revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
         }
 
-        // Validate oracle implements IOracle interface (non-zero check)
-        if (config.oracle != address(0)) {
-            // Try to call getPrice to verify oracle interface
-            // Using try-catch with gas limit to detect if oracle is a valid contract
-            try IOracle(config.oracle).getPrice(address(0), address(0)) returns (
-                uint256, uint256
-            ) {
-            // Oracle call succeeded - it appears to implement the interface
-            }
-            catch {
-                // Oracle call failed - likely doesn't implement IOracle or reverts
-                revert Errors.InvalidOracle(config.oracle);
-            }
-        }
+        // Note: Oracle validation at configure time is intentionally skipped.
+        // Per IOracle interface: "Implementations should revert if price data is unavailable or invalid"
+        // Using a synthetic (0,0) pair would incorrectly reject valid oracles that properly validate token pairs.
+        // Oracle is validated at runtime with actual pool tokens in getOraclePriceWithValidation(),
+        // which uses try-catch to gracefully handle oracle failures.
 
         // Validate vault0 implements IExternalVault interface if non-zero
         if (config.vault0 != address(0)) {

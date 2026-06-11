@@ -311,30 +311,6 @@ contract AdministrativeFunctionsTest is BaseTest {
         hook.configurePool(poolId, config);
     }
 
-    /// @notice Test configuration fails with invalid oracle
-    /// @custom:requirements Validates: 20.1-20.5
-    function test_ConfigurePool_Fails_InvalidOracle() public {
-        PoolId poolId = testPoolKey.toId();
-
-        // Use a non-contract address as oracle
-        address invalidOracle = address(0x1111);
-
-        DataTypes.PoolConfig memory config = DataTypes.PoolConfig({
-            oracle: invalidOracle,
-            vault0: address(testVault0),
-            vault1: address(testVault1),
-            baseFeeBps: 30,
-            maxFeeMultiplier: 300,
-            deviationThresholdBps: 500,
-            isPaused: false
-        });
-
-        vm.prank(owner);
-        // The try-catch will fail when calling a non-contract, which reverts with empty reason
-        vm.expectRevert();
-        hook.configurePool(poolId, config);
-    }
-
     /// @notice Test configuration fails with invalid vault0
     /// @custom:requirements Validates: 21.1-21.5
     function test_ConfigurePool_Fails_InvalidVault0() public {
