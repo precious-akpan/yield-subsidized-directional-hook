@@ -229,9 +229,11 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
             }
         }
 
-        // Validate fee parameters: maxFeeMultiplier >= baseFeeBps
-        if (config.maxFeeMultiplier < config.baseFeeBps) {
-            revert Errors.InvalidConfiguration("maxFeeMultiplier must be >= baseFeeBps");
+        // Validate fee parameters: maxFeeMultiplier >= BPS_DENOMINATOR (1.0x)
+        // Multipliers are in basis-point format where 10000 == 1.0x
+        // Values below 10000 would REDUCE fees under toxic conditions
+        if (config.maxFeeMultiplier < BPS_DENOMINATOR) {
+            revert Errors.InvalidConfiguration("maxFeeMultiplier must be >= 10000 (1.0x)");
         }
 
         // Validate fee parameters are within reasonable bounds

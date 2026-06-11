@@ -102,14 +102,14 @@ contract AdministrativeFunctionsTest is BaseTest {
             vault0: address(testVault0),
             vault1: address(testVault1),
             baseFeeBps: 30, // 0.3%
-            maxFeeMultiplier: 300, // 3x
+            maxFeeMultiplier: 30000, // 3.0x (multipliers are in bps: 10000 = 1.0x)
             deviationThresholdBps: 500, // 5%
             isPaused: false
         });
 
         // Expect PoolConfigured event
         vm.expectEmit(true, true, true, true, address(hook));
-        emit PoolConfigured(poolId, address(testOracle), address(testVault0), address(testVault1), 30, 300, 500);
+        emit PoolConfigured(poolId, address(testOracle), address(testVault0), address(testVault1), 30, 30000, 500);
 
         // Configure pool as owner
         vm.prank(owner);
@@ -129,7 +129,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         assertEq(vault0, address(testVault0), "Vault0 not stored");
         assertEq(vault1, address(testVault1), "Vault1 not stored");
         assertEq(baseFeeBps, 30, "Base fee not stored");
-        assertEq(maxFeeMultiplier, 300, "Max multiplier not stored");
+        assertEq(maxFeeMultiplier, 30000, "Max multiplier not stored");
         assertEq(deviationThresholdBps, 500, "Deviation threshold not stored");
         assertEq(isPaused, false, "Pause flag not stored");
     }
@@ -144,7 +144,7 @@ contract AdministrativeFunctionsTest is BaseTest {
             vault0: address(0),
             vault1: address(0),
             baseFeeBps: 50,
-            maxFeeMultiplier: 200,
+            maxFeeMultiplier: 20000,
             deviationThresholdBps: 1000,
             isPaused: false
         });
@@ -178,7 +178,7 @@ contract AdministrativeFunctionsTest is BaseTest {
             vault0: address(testVault0),
             vault1: address(testVault1),
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });
@@ -199,7 +199,7 @@ contract AdministrativeFunctionsTest is BaseTest {
             vault0: address(testVault0),
             vault1: address(testVault1),
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });
@@ -219,8 +219,8 @@ contract AdministrativeFunctionsTest is BaseTest {
             oracle: address(testOracle),
             vault0: address(testVault0),
             vault1: address(testVault1),
-            baseFeeBps: 300, // 3x
-            maxFeeMultiplier: 30, // 0.3% (less than base!)
+            baseFeeBps: 30,
+            maxFeeMultiplier: 9999, // Below 10000 (1.0x) - invalid!
             deviationThresholdBps: 500,
             isPaused: false
         });
@@ -228,7 +228,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         // Should revert with InvalidConfiguration
         vm.prank(owner);
         vm.expectRevert(
-            abi.encodeWithSelector(Errors.InvalidConfiguration.selector, "maxFeeMultiplier must be >= baseFeeBps")
+            abi.encodeWithSelector(Errors.InvalidConfiguration.selector, "maxFeeMultiplier must be >= 10000 (1.0x)")
         );
         hook.configurePool(poolId, config);
     }
@@ -286,7 +286,7 @@ contract AdministrativeFunctionsTest is BaseTest {
             vault0: address(testVault0),
             vault1: address(testVault1),
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 0, // Invalid: zero
             isPaused: false
         });
@@ -324,7 +324,7 @@ contract AdministrativeFunctionsTest is BaseTest {
             vault0: invalidVault,
             vault1: address(testVault1),
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });
@@ -348,7 +348,7 @@ contract AdministrativeFunctionsTest is BaseTest {
             vault0: address(testVault0),
             vault1: invalidVault,
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });

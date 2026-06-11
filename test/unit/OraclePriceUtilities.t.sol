@@ -65,7 +65,7 @@ contract OraclePriceUtilitiesTest is Test {
             vault0: address(0), // Not needed for these tests
             vault1: address(0), // Not needed for these tests
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });
@@ -166,7 +166,7 @@ contract OraclePriceUtilitiesTest is Test {
             vault0: address(0),
             vault1: address(0),
             baseFeeBps: 30,
-            maxFeeMultiplier: 300,
+            maxFeeMultiplier: 30000,
             deviationThresholdBps: 500,
             isPaused: false
         });
