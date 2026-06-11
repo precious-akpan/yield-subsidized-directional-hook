@@ -23,9 +23,9 @@ contract ReactiveKeeperCallback is IReactive {
     // ========== CONSTANTS ==========
 
     /// @notice Event signature for IdleCapitalDetected
-    /// @dev keccak256("IdleCapitalDetected(bytes32,uint256,uint256)")
+    /// @dev keccak256("IdleCapitalDetected(bytes32,uint256,uint256,(address,address,uint24,int24,address))")
     bytes32 private constant IDLE_CAPITAL_DETECTED =
-        keccak256(abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256)"));
+        keccak256(abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256,(address,address,uint24,int24,address))"));
 
     // ========== STATE VARIABLES ==========
 
@@ -159,7 +159,7 @@ contract ReactiveKeeperCallback is IReactive {
     /// - log._contract: The hook contract address (must match hookAddress)
     /// - log.topic_0: Event signature hash (must be IdleCapitalDetected)
     /// - log.topic_1: poolId (indexed parameter)
-    /// - log.data: ABI-encoded (uint256 idleAmount0, uint256 idleAmount1, PoolKey poolKey)
+    /// - log.data: ABI-encoded (uint256 idleAmount0, uint256 idleAmount1, PoolKey poolKey) - 3 values total
     function react(IReactive.LogRecord calldata log) external {
         // 1. Validate event source is from the monitored hook contract
         require(log._contract == hookAddress, "Event not from hook");

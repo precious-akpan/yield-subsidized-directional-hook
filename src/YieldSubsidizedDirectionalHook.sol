@@ -21,7 +21,7 @@ import {IExternalVault} from "./interfaces/IExternalVault.sol";
 
 /// @dev Event emitted when idle capital is detected in a pool
 /// @dev Enables Reactive automation to monitor and trigger automated sweeps
-event IdleCapitalDetected(PoolId indexed poolId, uint256 idleAmount0, uint256 idleAmount1);
+event IdleCapitalDetected(PoolId indexed poolId, uint256 idleAmount0, uint256 idleAmount1, PoolKey poolKey);
 import {SqrtPriceMath} from "v4-core/libraries/SqrtPriceMath.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {IERC20 as IERC20Token} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -1003,7 +1003,7 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
 
         // Emit event for Reactive automation to monitor
         // This enables ReactiveSubscriber to detect idle capital and trigger automated sweeps
-        emit IdleCapitalDetected(poolId, idleAmount0, idleAmount1);
+        emit IdleCapitalDetected(poolId, idleAmount0, idleAmount1, key);
 
         // Validate amounts exceed minimum sweep threshold
         // At least one token must meet the threshold

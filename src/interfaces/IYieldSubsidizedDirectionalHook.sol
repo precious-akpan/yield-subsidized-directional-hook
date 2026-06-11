@@ -141,7 +141,8 @@ interface IYieldSubsidizedDirectionalHook {
     /// @param poolId The pool with detected idle capital
     /// @param idleAmount0 Amount of out-of-range token0 capital
     /// @param idleAmount1 Amount of out-of-range token1 capital
-    event IdleCapitalDetected(PoolId indexed poolId, uint256 idleAmount0, uint256 idleAmount1);
+    /// @param poolKey The pool key used for sweepIdleCapital call
+    event IdleCapitalDetected(PoolId indexed poolId, uint256 idleAmount0, uint256 idleAmount1, PoolKey poolKey);
 
     // ========== PERMISSIONLESS CAPITAL SWEEP FUNCTIONS ==========
 

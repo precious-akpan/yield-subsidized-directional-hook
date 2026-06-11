@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {IReactive} from "reactive-lib/interfaces/IReactive.sol";
 import {IYieldSubsidizedDirectionalHook} from "../interfaces/IYieldSubsidizedDirectionalHook.sol";
+import {PoolKey} from "v4-core/types/PoolKey.sol";
 
 /// @title ReactiveSubscriber
 /// @notice Contract that subscribes to hook events and forwards them to the ReactiveKeeperCallback
@@ -18,10 +19,10 @@ contract ReactiveSubscriber is IReactive {
     // ========== CONSTANTS ==========
 
     /// @notice Event signature for IdleCapitalDetected
-    /// @dev keccak256("IdleCapitalDetected(bytes32,uint256,uint256)")
+    /// @dev keccak256("IdleCapitalDetected(bytes32,uint256,uint256,(address,address,uint24,int24,address))")
     /// This is the event we subscribe to for automated sweep triggering
     bytes32 private constant IDLE_CAPITAL_DETECTED =
-        keccak256(abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256)"));
+        keccak256(abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256,(address,address,uint24,int24,address))"));
 
     // ========== STATE VARIABLES ==========
 
@@ -147,8 +148,8 @@ contract ReactiveSubscriber is IReactive {
         // Extract pool ID from indexed parameter
         bytes32 poolId = bytes32(log.topic_1);
 
-        // Decode idle amounts from event data
-        (uint256 idleAmount0, uint256 idleAmount1) = abi.decode(log.data, (uint256, uint256));
+        // Decode idle amounts and PoolKey from event data
+        (uint256 idleAmount0, uint256 idleAmount1,) = abi.decode(log.data, (uint256, uint256, PoolKey));
 
         // 3. Forward event to callback contract on Reactive Network
         IReactive(callbackContract).react(log);
