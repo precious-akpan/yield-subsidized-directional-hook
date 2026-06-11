@@ -24,8 +24,9 @@ contract ReactiveKeeperCallback is IReactive {
 
     /// @notice Event signature for IdleCapitalDetected
     /// @dev keccak256("IdleCapitalDetected(bytes32,uint256,uint256,(address,address,uint24,int24,address))")
-    bytes32 private constant IDLE_CAPITAL_DETECTED =
-        keccak256(abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256,(address,address,uint24,int24,address))"));
+    bytes32 private constant IDLE_CAPITAL_DETECTED = keccak256(
+        abi.encodePacked("IdleCapitalDetected(bytes32,uint256,uint256,(address,address,uint24,int24,address))")
+    );
 
     // ========== STATE VARIABLES ==========
 
