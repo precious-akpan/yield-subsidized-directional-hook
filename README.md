@@ -4,8 +4,29 @@
 [![Uniswap v4](https://img.shields.io/badge/Uniswap-v4-FF007A?logo=uniswap)](https://uniswap.org/)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C?logo=ethereum)](https://getfoundry.sh/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-171%20Passing-success)](test/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A production-ready Uniswap v4 Hook that protects Liquidity Providers from Impermanent Loss through directional fee scaling, external yield generation, and automated IL compensation.
+
+> 🏆 **UHI9 2026 Hackathon Submission** - Theme: Impermanent Loss & Yield Systems
+
+---
+
+## 📑 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Testing](#testing)
+- [Security](#security)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 

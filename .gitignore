@@ -22,3 +22,6 @@ SPEC_UPDATES_SUMMARY.md
 REACTIVE_NETWORK_SETUP.md
 TASK_*.md
 TEST_SETUP_COMPLETE.md
+
+# Work in progress (cleanup for hackathon submission)
+.wip/
