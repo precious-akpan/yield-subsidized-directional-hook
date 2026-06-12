@@ -22,13 +22,3 @@ SPEC_UPDATES_SUMMARY.md
 REACTIVE_NETWORK_SETUP.md
 TASK_*.md
 TEST_SETUP_COMPLETE.md
-
-# Work in progress (cleanup for hackathon submission)
-.wip/
-
-# Hackathon submission materials (internal use only)
-HOOKATHON_SUBMISSION.md
-DEMO_SCRIPT.md
-SLIDE_DECK_OUTLINE.md
-GITHUB_CLEANUP_COMPLETE.md
-SUBMISSION_READY.md
