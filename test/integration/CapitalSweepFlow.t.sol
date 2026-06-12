@@ -70,13 +70,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         hook = new YieldSubsidizedDirectionalHook(IPoolManager(address(poolManager)));
 
         // Create test pool key
-        testPoolKey = createPoolKey(
-            address(token0),
-            address(token1),
-            POOL_FEE,
-            TICK_SPACING,
-            address(hook)
-        );
+        testPoolKey = createPoolKey(address(token0), address(token1), POOL_FEE, TICK_SPACING, address(hook));
         testPoolId = testPoolKey.toId();
 
         // Initialize pool through PoolManager mock
@@ -125,11 +119,11 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
     /// @dev Validates Requirements: 8.1-8.5, 9.1-9.5, 10.1-10.5, 11.1-11.5, 24.1-24.5
     function test_CapitalSweepFlow_OutOfRangePositions() public {
         // ========== SETUP: Create out-of-range LP positions ==========
-        
+
         // Current tick is 0 (price 1:1)
         // Position 1: Above current price (tick 60 to 120) - all token0
         // Position 2: Below current price (tick -120 to -60) - all token1
-        
+
         int24[] memory tickLowers = new int24[](2);
         int24[] memory tickUppers = new int24[](2);
         uint128[] memory liquidityAmounts = new uint128[](2);
@@ -145,7 +139,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         liquidityAmounts[1] = 100e18; // 100 ETH worth of liquidity
 
         // Calculate expected idle capital amounts
-        (uint256 expectedIdle0, uint256 expectedIdle1) = 
+        (uint256 expectedIdle0, uint256 expectedIdle1) =
             hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
 
         // Verify idle capital was detected
@@ -153,7 +147,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         assertGt(expectedIdle1, 0, "Should detect idle token1");
 
         // ========== EXECUTE: Call sweepIdleCapital as keeper ==========
-        
+
         // Record subsidy pool state before sweep
         (
             uint256 yieldBefore0,
@@ -178,40 +172,24 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         hook.sweepIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
 
         // ========== VERIFY: Capital transferred to vaults ==========
-        
+
         // Verify vault balances increased by swept amounts
         uint256 vault0BalanceAfter = token0.balanceOf(address(vault0));
         uint256 vault1BalanceAfter = token1.balanceOf(address(vault1));
-        
-        assertEq(
-            vault0BalanceAfter,
-            vault0BalanceBefore + expectedIdle0,
-            "Vault0 should receive idle token0"
-        );
-        assertEq(
-            vault1BalanceAfter,
-            vault1BalanceBefore + expectedIdle1,
-            "Vault1 should receive idle token1"
-        );
+
+        assertEq(vault0BalanceAfter, vault0BalanceBefore + expectedIdle0, "Vault0 should receive idle token0");
+        assertEq(vault1BalanceAfter, vault1BalanceBefore + expectedIdle1, "Vault1 should receive idle token1");
 
         // ========== VERIFY: Hook received vault shares ==========
-        
+
         uint256 hookVaultShares0After = vault0.shares(address(hook));
         uint256 hookVaultShares1After = vault1.shares(address(hook));
-        
-        assertGt(
-            hookVaultShares0After,
-            hookVaultShares0Before,
-            "Hook should receive vault0 shares"
-        );
-        assertGt(
-            hookVaultShares1After,
-            hookVaultShares1Before,
-            "Hook should receive vault1 shares"
-        );
+
+        assertGt(hookVaultShares0After, hookVaultShares0Before, "Hook should receive vault0 shares");
+        assertGt(hookVaultShares1After, hookVaultShares1Before, "Hook should receive vault1 shares");
 
         // ========== VERIFY: SubsidyPool accounting updated ==========
-        
+
         (
             uint256 yieldAfter0,
             uint256 yieldAfter1,
@@ -222,31 +200,15 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         ) = hook.subsidyPools(testPoolId);
 
         // Verify principal amounts increased
-        assertEq(
-            principalAfter0,
-            principalBefore0 + expectedIdle0,
-            "Principal0 should increase by swept amount"
-        );
-        assertEq(
-            principalAfter1,
-            principalBefore1 + expectedIdle1,
-            "Principal1 should increase by swept amount"
-        );
+        assertEq(principalAfter0, principalBefore0 + expectedIdle0, "Principal0 should increase by swept amount");
+        assertEq(principalAfter1, principalBefore1 + expectedIdle1, "Principal1 should increase by swept amount");
 
         // Verify vault shares tracked
         uint256 expectedShares0 = hookVaultShares0After - hookVaultShares0Before;
         uint256 expectedShares1 = hookVaultShares1After - hookVaultShares1Before;
-        
-        assertEq(
-            sharesAfter0,
-            sharesBefore0 + expectedShares0,
-            "Vault shares0 should be tracked correctly"
-        );
-        assertEq(
-            sharesAfter1,
-            sharesBefore1 + expectedShares1,
-            "Vault shares1 should be tracked correctly"
-        );
+
+        assertEq(sharesAfter0, sharesBefore0 + expectedShares0, "Vault shares0 should be tracked correctly");
+        assertEq(sharesAfter1, sharesBefore1 + expectedShares1, "Vault shares1 should be tracked correctly");
 
         // Verify yield amounts are unchanged (no yield accumulated yet)
         assertEq(yieldAfter0, yieldBefore0, "Yield0 should be unchanged after initial sweep");
@@ -279,7 +241,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         liquidityAmounts[2] = 50e18;
 
         // Calculate idle capital (should only include positions 2 and 3)
-        (uint256 expectedIdle0, uint256 expectedIdle1) = 
+        (uint256 expectedIdle0, uint256 expectedIdle1) =
             hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
 
         // Verify only out-of-range positions detected
@@ -291,8 +253,8 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         hook.sweepIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
 
         // Verify correct amounts transferred
-        (, , uint256 principalAfter0, uint256 principalAfter1, ,) = hook.subsidyPools(testPoolId);
-        
+        (,, uint256 principalAfter0, uint256 principalAfter1,,) = hook.subsidyPools(testPoolId);
+
         assertEq(principalAfter0, expectedIdle0, "Should sweep only out-of-range token0");
         assertEq(principalAfter1, expectedIdle1, "Should sweep only out-of-range token1");
     }
@@ -316,16 +278,16 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         hook.sweepIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
 
         // Verify sweep succeeded
-        (, , uint256 principal0, , ,) = hook.subsidyPools(testPoolId);
+        (,, uint256 principal0,,,) = hook.subsidyPools(testPoolId);
         assertGt(principal0, 0, "Alice should be able to trigger sweep");
 
         // Setup more idle capital for second test
         poolManager.setSlot0(testPoolId, SQRT_PRICE_1_1, 60, 0, POOL_FEE);
-        
+
         int24[] memory tickLowers2 = new int24[](1);
         int24[] memory tickUppers2 = new int24[](1);
         uint128[] memory liquidityAmounts2 = new uint128[](1);
-        
+
         tickLowers2[0] = -120;
         tickUppers2[0] = -60;
         liquidityAmounts2[0] = 50e18; // Increased from 3e18 to meet minimum threshold
@@ -335,7 +297,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         hook.sweepIdleCapital(testPoolKey, tickLowers2, tickUppers2, liquidityAmounts2);
 
         // Verify sweep succeeded
-        (, , , uint256 principal1, ,) = hook.subsidyPools(testPoolId);
+        (,,, uint256 principal1,,) = hook.subsidyPools(testPoolId);
         assertGt(principal1, 0, "Bob should be able to trigger sweep");
     }
 
@@ -358,7 +320,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         liquidityAmounts[1] = 40e18;
 
         // Calculate expected values
-        (uint256 expectedAmount0, uint256 expectedAmount1) = 
+        (uint256 expectedAmount0, uint256 expectedAmount1) =
             hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
 
         // Record logs
@@ -372,7 +334,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         // Find CapitalSwept event
-        // Event signature: CapitalSwept(bytes32 indexed poolId, uint256 amount0, uint256 amount1, 
+        // Event signature: CapitalSwept(bytes32 indexed poolId, uint256 amount0, uint256 amount1,
         //                              uint256 shares0, uint256 shares1, address indexed caller)
         bool eventFound = false;
         for (uint256 i = 0; i < logs.length; i++) {
@@ -382,8 +344,8 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
             // topic[2] = caller (indexed)
             // data = abi.encode(amount0, amount1, shares0, shares1)
             if (
-                logs[i].topics.length == 3 &&
-                logs[i].topics[0] == keccak256("CapitalSwept(bytes32,uint256,uint256,uint256,uint256,address)")
+                logs[i].topics.length == 3
+                    && logs[i].topics[0] == keccak256("CapitalSwept(bytes32,uint256,uint256,uint256,uint256,address)")
             ) {
                 eventFound = true;
 
@@ -396,7 +358,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
                 assertEq(amount1, expectedAmount1, "Event should include correct amount1");
                 assertGt(shares0, 0, "Event should include vault shares0");
                 assertGt(shares1, 0, "Event should include vault shares1");
-                
+
                 // Note: caller is in topics[2], but we can't easily decode it in this test pattern
                 // The important part is that the event was emitted with the correct amounts
 
@@ -413,13 +375,8 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
     /// @dev Validates Requirements: 9.3
     function test_RevertWhen_PoolNotRegistered() public {
         // Create unregistered pool key
-        PoolKey memory unregisteredKey = createPoolKey(
-            address(0x999),
-            address(0x888),
-            POOL_FEE,
-            TICK_SPACING,
-            address(hook)
-        );
+        PoolKey memory unregisteredKey =
+            createPoolKey(address(0x999), address(0x888), POOL_FEE, TICK_SPACING, address(hook));
 
         int24[] memory tickLowers = new int24[](1);
         int24[] memory tickUppers = new int24[](1);
@@ -494,7 +451,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         liquidityAmounts[1] = 5e18;
 
         // Verify no idle capital
-        (uint256 idle0, uint256 idle1) = 
+        (uint256 idle0, uint256 idle1) =
             hook.calculateIdleCapital(testPoolKey, tickLowers, tickUppers, liquidityAmounts);
         assertEq(idle0, 0, "Should have no idle token0");
         assertEq(idle1, 0, "Should have no idle token1");
@@ -540,18 +497,10 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         uint256 actualShares1 = hookShares1After - hookShares1Before;
 
         // Verify SubsidyPool tracking matches actual shares
-        (, , , , uint256 trackedShares0, uint256 trackedShares1) = hook.subsidyPools(testPoolId);
+        (,,,, uint256 trackedShares0, uint256 trackedShares1) = hook.subsidyPools(testPoolId);
 
-        assertEq(
-            trackedShares0,
-            actualShares0,
-            "Tracked vault shares0 should match actual shares received"
-        );
-        assertEq(
-            trackedShares1,
-            actualShares1,
-            "Tracked vault shares1 should match actual shares received"
-        );
+        assertEq(trackedShares0, actualShares0, "Tracked vault shares0 should match actual shares received");
+        assertEq(trackedShares1, actualShares1, "Tracked vault shares1 should match actual shares received");
 
         // Verify shares are non-zero
         assertGt(trackedShares0, 0, "Should track non-zero shares for token0");
@@ -576,7 +525,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         hook.sweepIdleCapital(testPoolKey, tickLowers1, tickUppers1, liquidityAmounts1);
 
         // Record state after first sweep
-        (, , uint256 principal0After1, uint256 principal1After1, uint256 shares0After1, uint256 shares1After1) = 
+        (,, uint256 principal0After1, uint256 principal1After1, uint256 shares0After1, uint256 shares1After1) =
             hook.subsidyPools(testPoolId);
 
         // Second sweep - another position above current price (more token0)
@@ -589,26 +538,18 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         tickUppers2[0] = 180;
         liquidityAmounts2[0] = 40e18;
 
-        (uint256 expectedIdle0_2, uint256 expectedIdle1_2) = 
+        (uint256 expectedIdle0_2, uint256 expectedIdle1_2) =
             hook.calculateIdleCapital(testPoolKey, tickLowers2, tickUppers2, liquidityAmounts2);
 
         vm.prank(ALICE);
         hook.sweepIdleCapital(testPoolKey, tickLowers2, tickUppers2, liquidityAmounts2);
 
         // Verify accumulation
-        (, , uint256 principal0After2, uint256 principal1After2, uint256 shares0After2, uint256 shares1After2) = 
+        (,, uint256 principal0After2, uint256 principal1After2, uint256 shares0After2, uint256 shares1After2) =
             hook.subsidyPools(testPoolId);
 
-        assertEq(
-            principal0After2,
-            principal0After1 + expectedIdle0_2,
-            "Principal0 should accumulate across sweeps"
-        );
-        assertEq(
-            principal1After2,
-            principal1After1 + expectedIdle1_2,
-            "Principal1 should accumulate across sweeps"
-        );
+        assertEq(principal0After2, principal0After1 + expectedIdle0_2, "Principal0 should accumulate across sweeps");
+        assertEq(principal1After2, principal1After1 + expectedIdle1_2, "Principal1 should accumulate across sweeps");
         assertGt(shares0After2, shares0After1, "Shares0 should accumulate");
         // shares1 might not accumulate if both sweeps only deposit token0
         assertEq(shares1After2, shares1After1, "Shares1 should remain same if no token1 deposits");

@@ -72,13 +72,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         hook = new YieldSubsidizedDirectionalHook(IPoolManager(address(poolManager)));
 
         // Create test pool key
-        testPoolKey = createPoolKey(
-            address(token0),
-            address(token1),
-            POOL_FEE,
-            TICK_SPACING,
-            address(hook)
-        );
+        testPoolKey = createPoolKey(address(token0), address(token1), POOL_FEE, TICK_SPACING, address(hook));
         testPoolId = testPoolKey.toId();
 
         // Initialize pool through PoolManager mock
@@ -154,12 +148,7 @@ contract SwapFlowIntegrationTest is BaseTest {
 
         // Execute beforeSwap
         vm.prank(address(poolManager));
-        (bytes4 selector, , uint24 feeOverride) = hook.beforeSwap(
-            address(0),
-            testPoolKey,
-            swapParams,
-            bytes("")
-        );
+        (bytes4 selector,, uint24 feeOverride) = hook.beforeSwap(address(0), testPoolKey, swapParams, bytes(""));
 
         // Verify selector returned
         assertEq(selector, hook.beforeSwap.selector, "Should return correct selector");
@@ -179,7 +168,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         // Setup: Pool price is lower than oracle price
         // Pool at 1:1, oracle at 1.1:1 (higher)
         // A oneForZero swap (selling token1) will INCREASE price toward oracle (benign)
-        
+
         // Note: In Uniswap pricing, zeroForOne=true DECREASES price (more token1 per token0)
         // To move toward a HIGHER oracle price, we need zeroForOne=false (oneForZero)
 
@@ -198,12 +187,7 @@ contract SwapFlowIntegrationTest is BaseTest {
 
         // Execute beforeSwap
         vm.prank(address(poolManager));
-        (bytes4 selector, , uint24 feeOverride) = hook.beforeSwap(
-            address(0),
-            testPoolKey,
-            swapParams,
-            bytes("")
-        );
+        (bytes4 selector,, uint24 feeOverride) = hook.beforeSwap(address(0), testPoolKey, swapParams, bytes(""));
 
         // Verify selector returned
         assertEq(selector, hook.beforeSwap.selector, "Should return correct selector");
@@ -221,20 +205,12 @@ contract SwapFlowIntegrationTest is BaseTest {
         oracle.setStalePrice(address(token0), address(token1), ORACLE_PRICE_1_1, 600);
 
         // Create swap params
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: 0
-        });
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: 0});
 
         // Execute beforeSwap
         vm.prank(address(poolManager));
-        (bytes4 selector, , uint24 feeOverride) = hook.beforeSwap(
-            address(0),
-            testPoolKey,
-            swapParams,
-            bytes("")
-        );
+        (bytes4 selector,, uint24 feeOverride) = hook.beforeSwap(address(0), testPoolKey, swapParams, bytes(""));
 
         // Verify selector returned
         assertEq(selector, hook.beforeSwap.selector, "Should return correct selector");
@@ -252,20 +228,12 @@ contract SwapFlowIntegrationTest is BaseTest {
         oracle.setShouldRevert(true);
 
         // Create swap params
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: 0
-        });
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: 0});
 
         // Execute beforeSwap
         vm.prank(address(poolManager));
-        (bytes4 selector, , uint24 feeOverride) = hook.beforeSwap(
-            address(0),
-            testPoolKey,
-            swapParams,
-            bytes("")
-        );
+        (bytes4 selector,, uint24 feeOverride) = hook.beforeSwap(address(0), testPoolKey, swapParams, bytes(""));
 
         // Verify selector returned
         assertEq(selector, hook.beforeSwap.selector, "Should return correct selector");
@@ -281,7 +249,7 @@ contract SwapFlowIntegrationTest is BaseTest {
     function test_FeeScaling_VariousDeviations() public {
         // Test scenario 1: Very small swap with oracle at 1:1
         oracle.setPrice(address(token0), address(token1), ORACLE_PRICE_1_1);
-        
+
         IPoolManager.SwapParams memory smallSwap = IPoolManager.SwapParams({
             zeroForOne: true,
             amountSpecified: 0.001e18, // Very small swap
@@ -289,8 +257,8 @@ contract SwapFlowIntegrationTest is BaseTest {
         });
 
         vm.prank(address(poolManager));
-        (, , uint24 fee1) = hook.beforeSwap(address(0), testPoolKey, smallSwap, bytes(""));
-        
+        (,, uint24 fee1) = hook.beforeSwap(address(0), testPoolKey, smallSwap, bytes(""));
+
         // Small swap should apply baseline fee
         assertEq(fee1, BASE_FEE_BPS, "Small swap should apply baseline fee");
 
@@ -300,13 +268,13 @@ contract SwapFlowIntegrationTest is BaseTest {
             amountSpecified: 10e18, // Large swap
             sqrtPriceLimitX96: 0
         });
-        
+
         // Set oracle price below pool to create toxic condition
         oracle.setPrice(address(token0), address(token1), 0.85e18);
 
         vm.prank(address(poolManager));
-        (, , uint24 fee2) = hook.beforeSwap(address(0), testPoolKey, largeSwap, bytes(""));
-        
+        (,, uint24 fee2) = hook.beforeSwap(address(0), testPoolKey, largeSwap, bytes(""));
+
         // Large swap with deviation should potentially apply scaled fee
         assertGe(fee2, BASE_FEE_BPS, "Large swap fee should be at least base");
         assertLe(fee2, MAX_FEE_MULTIPLIER, "Fee should not exceed maximum");
@@ -317,13 +285,13 @@ contract SwapFlowIntegrationTest is BaseTest {
             amountSpecified: 100e18, // Huge swap
             sqrtPriceLimitX96: 0
         });
-        
+
         // Set oracle price significantly lower
         oracle.setPrice(address(token0), address(token1), ORACLE_PRICE_LOW);
 
         vm.prank(address(poolManager));
-        (, , uint24 fee3) = hook.beforeSwap(address(0), testPoolKey, hugeSwap, bytes(""));
-        
+        (,, uint24 fee3) = hook.beforeSwap(address(0), testPoolKey, hugeSwap, bytes(""));
+
         // Huge swap should apply scaled fee
         assertGe(fee3, BASE_FEE_BPS, "Huge swap fee should be at least base");
         assertLe(fee3, MAX_FEE_MULTIPLIER, "Fee should not exceed maximum");
@@ -334,11 +302,8 @@ contract SwapFlowIntegrationTest is BaseTest {
     /// @notice Test that non-PoolManager caller is rejected
     /// @dev Validates Requirements: 2.1-2.5 (access control)
     function test_UnauthorizedCaller_Reverts() public {
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: 0
-        });
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: 0});
 
         // Attempt to call from unauthorized address
         vm.prank(ALICE);
@@ -352,19 +317,11 @@ contract SwapFlowIntegrationTest is BaseTest {
     /// @dev Validates Requirements: 2.6-2.8 (pool registration validation)
     function test_UnregisteredPool_Reverts() public {
         // Create a different pool key that hasn't been initialized
-        PoolKey memory unregisteredKey = createPoolKey(
-            address(token1),
-            address(token0),
-            POOL_FEE,
-            TICK_SPACING,
-            address(hook)
-        );
+        PoolKey memory unregisteredKey =
+            createPoolKey(address(token1), address(token0), POOL_FEE, TICK_SPACING, address(hook));
 
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: 0
-        });
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: 0});
 
         // Attempt swap on unregistered pool
         vm.prank(address(poolManager));
@@ -388,15 +345,12 @@ contract SwapFlowIntegrationTest is BaseTest {
         uint160 newSqrtPrice = SQRT_PRICE_1_1 - (SQRT_PRICE_1_1 * 30) / 100;
         poolManager.setSlot0(testPoolId, newSqrtPrice, -200, 0, POOL_FEE);
 
-        IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: -1e18,
-            sqrtPriceLimitX96: 0
-        });
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: 0});
 
         // Execute swap
         vm.prank(address(poolManager));
-        (, , uint24 feeOverride) = hook.beforeSwap(address(0), testPoolKey, swapParams, bytes(""));
+        (,, uint24 feeOverride) = hook.beforeSwap(address(0), testPoolKey, swapParams, bytes(""));
 
         // Verify baseline fee applied despite toxic conditions
         // Paused pools still return baseFeeBps from config
@@ -433,9 +387,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         for (uint256 i = 0; i < logs.length; i++) {
             if (
                 logs[i].topics[0]
-                    == keccak256(
-                        "DirectionalFeeApplied(bytes32,bool,bool,uint24,uint256,uint256,uint256)"
-                    )
+                    == keccak256("DirectionalFeeApplied(bytes32,bool,bool,uint24,uint256,uint256,uint256)")
             ) {
                 eventFound = true;
 
@@ -470,11 +422,8 @@ contract SwapFlowIntegrationTest is BaseTest {
         oracle.setPrice(address(token0), address(token1), ORACLE_PRICE_1_1);
 
         // Test zeroForOne
-        IPoolManager.SwapParams memory swapParamsZeroForOne = IPoolManager.SwapParams({
-            zeroForOne: true,
-            amountSpecified: 1e18,
-            sqrtPriceLimitX96: 0
-        });
+        IPoolManager.SwapParams memory swapParamsZeroForOne =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 1e18, sqrtPriceLimitX96: 0});
 
         vm.recordLogs();
         vm.prank(address(poolManager));
@@ -485,13 +434,10 @@ contract SwapFlowIntegrationTest is BaseTest {
         for (uint256 i = 0; i < logs1.length; i++) {
             if (
                 logs1[i].topics[0]
-                    == keccak256(
-                        "DirectionalFeeApplied(bytes32,bool,bool,uint24,uint256,uint256,uint256)"
-                    )
+                    == keccak256("DirectionalFeeApplied(bytes32,bool,bool,uint24,uint256,uint256,uint256)")
             ) {
                 // zeroForOne is NOT indexed, it's in the data section (first bool)
-                (bool zeroForOne, , , , ,) =
-                    abi.decode(logs1[i].data, (bool, bool, uint24, uint256, uint256, uint256));
+                (bool zeroForOne,,,,,) = abi.decode(logs1[i].data, (bool, bool, uint24, uint256, uint256, uint256));
                 foundZeroForOne = zeroForOne == true;
                 break;
             }
@@ -499,11 +445,8 @@ contract SwapFlowIntegrationTest is BaseTest {
         assertTrue(foundZeroForOne, "Should track zeroForOne = true");
 
         // Test oneForZero
-        IPoolManager.SwapParams memory swapParamsOneForZero = IPoolManager.SwapParams({
-            zeroForOne: false,
-            amountSpecified: 1e18,
-            sqrtPriceLimitX96: 0
-        });
+        IPoolManager.SwapParams memory swapParamsOneForZero =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 1e18, sqrtPriceLimitX96: 0});
 
         vm.recordLogs();
         vm.prank(address(poolManager));
@@ -514,13 +457,10 @@ contract SwapFlowIntegrationTest is BaseTest {
         for (uint256 i = 0; i < logs2.length; i++) {
             if (
                 logs2[i].topics[0]
-                    == keccak256(
-                        "DirectionalFeeApplied(bytes32,bool,bool,uint24,uint256,uint256,uint256)"
-                    )
+                    == keccak256("DirectionalFeeApplied(bytes32,bool,bool,uint24,uint256,uint256,uint256)")
             ) {
                 // zeroForOne is NOT indexed, it's in the data section (first bool)
-                (bool zeroForOne, , , , ,) =
-                    abi.decode(logs2[i].data, (bool, bool, uint24, uint256, uint256, uint256));
+                (bool zeroForOne,,,,,) = abi.decode(logs2[i].data, (bool, bool, uint24, uint256, uint256, uint256));
                 foundOneForZero = zeroForOne == false;
                 break;
             }

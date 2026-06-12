@@ -50,10 +50,8 @@ contract MockPoolManager {
     /// @return The data returned from the callback
     function unlock(bytes calldata data) external returns (bytes memory) {
         // Call unlockCallback on the sender
-        (bool success, bytes memory result) = msg.sender.call(
-            abi.encodeWithSignature("unlockCallback(bytes)", data)
-        );
-        
+        (bool success, bytes memory result) = msg.sender.call(abi.encodeWithSignature("unlockCallback(bytes)", data));
+
         require(success, "Unlock callback failed");
         return result;
     }
