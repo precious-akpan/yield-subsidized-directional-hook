@@ -14,17 +14,17 @@ import {IHooks} from "v4-core/interfaces/IHooks.sol";
 /// @title AutomatedSweeps Integration Test
 /// @notice End-to-end integration tests for automated capital sweeps via Reactive Network
 /// @dev Tests the complete automation workflow: hook event emission → subscriber forwarding → keeper callback execution
-/// 
+///
 /// **DESIGN NOTE**: The current implementation has a limitation where `sweepIdleCapital` requires
-/// LP position arrays (tickLowers, tickUppers, liquidityAmounts) that are not available in the 
+/// LP position arrays (tickLowers, tickUppers, liquidityAmounts) that are not available in the
 /// IdleCapitalDetected event. To make automated sweeps work, one of these solutions is needed:
 /// 1. Modify sweepIdleCapital to internally query LP positions from PoolManager
 /// 2. Include position data in the IdleCapitalDetected event (may be expensive)
 /// 3. Have the hook maintain an internal registry of LP positions
-/// 
+///
 /// For these tests, we simulate the automation workflow using a MockHook that has the simplified
 /// interface expected by ReactiveKeeperCallback.
-/// 
+///
 /// @custom:task Task 24 - Create integration tests for automated sweeps
 /// **Validates: Requirements 41.1-41.5, 42.1-42.5, 43.1-43.5, 44.1-44.5, 50.1-50.5**
 contract AutomatedSweepsIntegrationTest is BaseTest {
@@ -180,8 +180,7 @@ contract AutomatedSweepsIntegrationTest is BaseTest {
         uint256 aboveThreshold = SWEEP_THRESHOLD * 2;
         uint256 belowThreshold = SWEEP_THRESHOLD / 2;
 
-        IReactive.LogRecord memory log =
-            _createLogRecord(testPoolId, aboveThreshold, belowThreshold, testPoolKey);
+        IReactive.LogRecord memory log = _createLogRecord(testPoolId, aboveThreshold, belowThreshold, testPoolKey);
 
         vm.expectEmit(true, true, true, true, address(keeperCallback));
         emit ReactiveKeeperCallback.SweepTriggered(testPoolId, aboveThreshold, belowThreshold, block.timestamp);
@@ -244,9 +243,7 @@ contract AutomatedSweepsIntegrationTest is BaseTest {
         uint256 secondSweepTime = keeperCallback.getLastSweepTime(testPoolId);
         assertGt(secondSweepTime, firstSweepTime, "Second sweep should succeed after interval");
         assertEq(
-            secondSweepTime,
-            firstSweepTime + MIN_SWEEP_INTERVAL + 1,
-            "Second sweep time should be interval after first"
+            secondSweepTime, firstSweepTime + MIN_SWEEP_INTERVAL + 1, "Second sweep time should be interval after first"
         );
     }
 
