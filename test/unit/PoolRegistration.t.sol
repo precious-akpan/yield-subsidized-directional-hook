@@ -33,7 +33,7 @@ contract PoolRegistrationTest is BaseTest {
         testPoolKey = createPoolKey(
             address(0x1000), // token0
             address(0x2000), // token1
-            3000, // 0.3% fee
+            DYNAMIC_FEE, // dynamic fee
             60, // tick spacing
             address(hook) // hooks contract
         );
@@ -78,6 +78,17 @@ contract PoolRegistrationTest is BaseTest {
 
         // Verify pool is now registered
         assertTrue(hook.registeredPools(poolId), "Pool should be registered");
+    }
+
+    /// @notice Static-fee pools are rejected: v4 would silently ignore the hook's fee override
+    function test_RevertWhen_PoolUsesStaticFee() public {
+        PoolKey memory staticFeeKey = createPoolKey(address(0x1000), address(0x2000), 3000, 60, address(hook));
+
+        vm.prank(address(mockPoolManager));
+        vm.expectRevert(Errors.PoolMustUseDynamicFee.selector);
+        hook.beforeInitialize(address(0), staticFeeKey, SQRT_PRICE_1_1);
+
+        assertFalse(hook.registeredPools(staticFeeKey.toId()), "Static-fee pool must not be registered");
     }
 
     /// @notice Test duplicate pool registration reverts (Req 1.5)

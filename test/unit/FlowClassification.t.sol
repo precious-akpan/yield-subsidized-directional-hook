@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {YieldSubsidizedDirectionalHook} from "../../src/YieldSubsidizedDirectionalHook.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
+import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {Currency} from "v4-core/types/Currency.sol";
@@ -55,7 +56,7 @@ contract FlowClassificationTest is Test {
         testPool = PoolKey({
             currency0: Currency.wrap(TOKEN0),
             currency1: Currency.wrap(TOKEN1),
-            fee: 3000, // 0.3%
+            fee: LPFeeLibrary.DYNAMIC_FEE_FLAG, // dynamic fee
             tickSpacing: 60,
             hooks: IHooks(address(hook))
         });

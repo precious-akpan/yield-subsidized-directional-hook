@@ -58,7 +58,7 @@ contract SubsidyDistributionTest is BaseTest {
         mockVault1 = new MockERC4626Vault(address(mockToken1));
 
         // Create a test PoolKey
-        testPoolKey = createPoolKey(address(mockToken0), address(mockToken1), 3000, 60, address(hook));
+        testPoolKey = createPoolKey(address(mockToken0), address(mockToken1), DYNAMIC_FEE, 60, address(hook));
 
         // Register pool
         vm.prank(address(mockPoolManager));
@@ -393,7 +393,8 @@ contract SubsidyDistributionTest is BaseTest {
     /// @notice Test beforeRemoveLiquidity reverts for unregistered pool
     function test_RevertWhen_BeforeRemoveLiquidityOnUnregisteredPool() public {
         // Create a new pool key that hasn't been registered
-        PoolKey memory unregisteredPoolKey = createPoolKey(address(0x9999), address(0x8888), 3000, 60, address(hook));
+        PoolKey memory unregisteredPoolKey =
+            createPoolKey(address(0x9999), address(0x8888), DYNAMIC_FEE, 60, address(hook));
 
         IPoolManager.ModifyLiquidityParams memory params = IPoolManager.ModifyLiquidityParams({
             tickLower: -60, tickUpper: 60, liquidityDelta: -1e18, salt: bytes32(0)

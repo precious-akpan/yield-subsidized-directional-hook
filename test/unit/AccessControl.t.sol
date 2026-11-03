@@ -40,7 +40,7 @@ contract AccessControlTest is BaseTest {
         testPoolKey = createPoolKey(
             address(0x1000), // token0
             address(0x2000), // token1
-            3000, // fee
+            DYNAMIC_FEE, // fee
             60, // tickSpacing
             address(hook) // hooks
         );

@@ -7,6 +7,7 @@ import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
+import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 
 /// @title BaseTest
 /// @notice Base test contract with common setup and utilities for all tests
@@ -23,6 +24,15 @@ abstract contract BaseTest is Test {
     uint160 internal constant SQRT_PRICE_1_1 = 79228162514264337593543950336;
     uint160 internal constant SQRT_PRICE_1_2 = 112045541949572279837463876454;
     uint160 internal constant SQRT_PRICE_2_1 = 56022770974786139918731938227;
+
+    // Pools using the hook must be dynamic-fee pools
+    uint24 internal constant DYNAMIC_FEE = LPFeeLibrary.DYNAMIC_FEE_FLAG;
+
+    /// @notice Decodes a beforeSwap fee override into basis points, asserting the override flag is set
+    function _decodeFeeBps(uint24 feeOverride) internal pure returns (uint256) {
+        require(feeOverride & LPFeeLibrary.OVERRIDE_FEE_FLAG != 0, "override flag not set");
+        return uint256(feeOverride & ~LPFeeLibrary.OVERRIDE_FEE_FLAG) / 100;
+    }
 
     // Test labels for better trace output
     function setUp() public virtual {

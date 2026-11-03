@@ -15,6 +15,13 @@ contract YieldSubsidizedDirectionalHookHelper is YieldSubsidizedDirectionalHook 
 
     constructor(IPoolManager _poolManager) YieldSubsidizedDirectionalHook(_poolManager) {}
 
+    // ============ EXPOSED FEE CONVERSION ============
+
+    /// @notice Exposes _toLpFeeOverride for testing
+    function testToLpFeeOverride(uint24 feeBps) public pure returns (uint24) {
+        return _toLpFeeOverride(feeBps);
+    }
+
     // ============ EXPOSED ORACLE AND PRICE UTILITIES ============
 
     /// @notice Exposes getOraclePriceWithValidation for testing

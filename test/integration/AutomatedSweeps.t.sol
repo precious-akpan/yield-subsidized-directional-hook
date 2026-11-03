@@ -80,7 +80,7 @@ contract AutomatedSweepsIntegrationTest is BaseTest {
         subscriber = new ReactiveSubscriber(address(hook), address(keeperCallback));
 
         // Setup first pool
-        testPoolKey = createPoolKey(address(token0), address(token1), POOL_FEE, TICK_SPACING, address(hook));
+        testPoolKey = createPoolKey(address(token0), address(token1), DYNAMIC_FEE, TICK_SPACING, address(hook));
         testPoolId = testPoolKey.toId();
 
         // Label addresses
@@ -283,7 +283,7 @@ contract AutomatedSweepsIntegrationTest is BaseTest {
             (token2, token3) = (token3, token2);
         }
 
-        secondPoolKey = createPoolKey(address(token2), address(token3), POOL_FEE, TICK_SPACING, address(hook));
+        secondPoolKey = createPoolKey(address(token2), address(token3), DYNAMIC_FEE, TICK_SPACING, address(hook));
         secondPoolId = secondPoolKey.toId();
 
         uint256 idleAmount = SWEEP_THRESHOLD * 2;
@@ -369,7 +369,7 @@ contract AutomatedSweepsIntegrationTest is BaseTest {
             (token2, token3) = (token3, token2);
         }
 
-        secondPoolKey = createPoolKey(address(token2), address(token3), POOL_FEE, TICK_SPACING, address(hook));
+        secondPoolKey = createPoolKey(address(token2), address(token3), DYNAMIC_FEE, TICK_SPACING, address(hook));
         secondPoolId = secondPoolKey.toId();
 
         // Pool 1: Large idle amount

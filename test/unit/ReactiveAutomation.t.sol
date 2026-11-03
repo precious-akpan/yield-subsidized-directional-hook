@@ -54,7 +54,7 @@ contract ReactiveAutomationTests is BaseTest {
         subscriber = new ReactiveSubscriber(hookAddress, payable(address(keeperCallback)));
 
         // Create test pool
-        testPoolKey = createPoolKey(ALICE, BOB, 3000, 60, hookAddress);
+        testPoolKey = createPoolKey(ALICE, BOB, DYNAMIC_FEE, 60, hookAddress);
         testPoolId = testPoolKey.toId();
 
         // Label addresses
