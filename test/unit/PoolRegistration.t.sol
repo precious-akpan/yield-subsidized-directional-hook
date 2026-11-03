@@ -91,6 +91,20 @@ contract PoolRegistrationTest is BaseTest {
         assertFalse(hook.registeredPools(staticFeeKey.toId()), "Static-fee pool must not be registered");
     }
 
+    /// @notice A registered but unconfigured pool must not be tradeable: baseFeeBps is 0, so swaps would be fee-free
+    function test_RevertWhen_SwapOnUnconfiguredPool() public {
+        vm.prank(address(mockPoolManager));
+        hook.beforeInitialize(address(0), testPoolKey, SQRT_PRICE_1_1);
+        assertFalse(hook.configuredPools(testPoolKey.toId()), "Pool should start unconfigured");
+
+        IPoolManager.SwapParams memory swapParams =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: SQRT_PRICE_1_2});
+
+        vm.prank(address(mockPoolManager));
+        vm.expectRevert(abi.encodeWithSelector(Errors.PoolNotConfigured.selector, PoolId.unwrap(testPoolKey.toId())));
+        hook.beforeSwap(address(0), testPoolKey, swapParams, "");
+    }
+
     /// @notice Test duplicate pool registration reverts (Req 1.5)
     function test_RevertWhen_DuplicatePoolRegistration() public {
         // Register pool once

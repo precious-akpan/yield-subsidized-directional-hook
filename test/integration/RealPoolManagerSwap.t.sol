@@ -141,6 +141,23 @@ contract RealPoolManagerSwapTest is BaseTest {
         assertEq(_swapAndGetFee(true), 3000, "failed oracle should fall back to the base fee");
     }
 
+    function test_SwapBeforeConfigurationReverts() public {
+        // A second pool that is initialized but never configured
+        PoolKey memory unconfigured = key;
+        unconfigured.tickSpacing = TICK_SPACING * 2;
+        manager.initialize(unconfigured, SQRT_PRICE_1_1);
+
+        vm.expectRevert(); // PoolManager wraps the hook's PoolNotConfigured revert
+        swapRouter.swap(
+            unconfigured,
+            IPoolManager.SwapParams({
+                zeroForOne: true, amountSpecified: -0.01e18, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            }),
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+            ""
+        );
+    }
+
     function test_StaticFeePoolCannotBeInitialized() public {
         PoolKey memory staticKey = key;
         staticKey.fee = 3000;
