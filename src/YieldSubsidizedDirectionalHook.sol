@@ -77,6 +77,10 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     /// @dev Contains oracle, vault addresses, fee parameters, and pause status
     mapping(PoolId => DataTypes.PoolConfig) public poolConfigs;
 
+    /// @notice Whether configurePool has been called for a pool
+    /// @dev Swaps revert until set, so an unconfigured pool cannot trade with a zero fee
+    mapping(PoolId => bool) public configuredPools;
+
     /// @notice IL subsidy pool accounting for each pool
     /// @dev Tracks principal, yield, and vault shares for both token0 and token1
     mapping(PoolId => DataTypes.SubsidyPool) public subsidyPools;
@@ -272,6 +276,7 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
 
         // Store configuration in poolConfigs mapping
         poolConfigs[poolId] = config;
+        configuredPools[poolId] = true;
 
         // Emit PoolConfigured event
         emit PoolConfigured(
@@ -531,6 +536,11 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         // Validate pool is registered
         if (!registeredPools[poolId]) {
             revert Errors.PoolNotRegistered(PoolId.unwrap(poolId));
+        }
+
+        // Validate pool has been configured; otherwise baseFeeBps is 0 and the swap would be fee-free
+        if (!configuredPools[poolId]) {
+            revert Errors.PoolNotConfigured(PoolId.unwrap(poolId));
         }
 
         DataTypes.PoolConfig memory config = poolConfigs[poolId];

@@ -50,6 +50,7 @@ contract YieldSubsidizedDirectionalHookHelper is YieldSubsidizedDirectionalHook 
     /// @notice Allows test to set pool configuration directly
     function setPoolConfig(PoolId poolId, DataTypes.PoolConfig memory config) external {
         poolConfigs[poolId] = config;
+        configuredPools[poolId] = true;
     }
 
     /// @notice Allows test to register pool directly

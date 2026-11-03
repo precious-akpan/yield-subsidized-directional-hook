@@ -27,6 +27,10 @@ library Errors {
     /// @param poolId The pool identifier that is not registered
     error PoolNotRegistered(bytes32 poolId);
 
+    /// @notice Thrown when swapping in a registered pool that has not been configured yet
+    /// @param poolId The pool identifier that is not configured
+    error PoolNotConfigured(bytes32 poolId);
+
     // ========== CONFIGURATION ERRORS ==========
 
     /// @notice Thrown when invalid configuration parameters are provided

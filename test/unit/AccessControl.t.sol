@@ -5,6 +5,7 @@ import "../BaseTest.sol";
 import {YieldSubsidizedDirectionalHook} from "../../src/YieldSubsidizedDirectionalHook.sol";
 import {MockPoolManager} from "../mocks/MockPoolManager.sol";
 import {Errors} from "../../src/libraries/Errors.sol";
+import {DataTypes} from "../../src/libraries/DataTypes.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
@@ -99,6 +100,20 @@ contract AccessControlTest is BaseTest {
         // First register the pool via beforeInitialize
         vm.prank(address(mockPoolManager));
         hook.beforeInitialize(address(this), testPoolKey, SQRT_PRICE_1_1);
+
+        // Swaps are rejected until the pool is configured
+        hook.configurePool(
+            testPoolKey.toId(),
+            DataTypes.PoolConfig({
+                oracle: address(0),
+                vault0: address(0),
+                vault1: address(0),
+                baseFeeBps: 30,
+                maxFeeMultiplier: 30_000,
+                deviationThresholdBps: 50,
+                isPaused: false
+            })
+        );
 
         IPoolManager.SwapParams memory swapParams =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: SQRT_PRICE_1_2});
