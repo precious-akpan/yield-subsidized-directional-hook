@@ -4,12 +4,12 @@
 [![Uniswap v4](https://img.shields.io/badge/Uniswap-v4-FF007A?logo=uniswap)](https://uniswap.org/)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C?logo=ethereum)](https://getfoundry.sh/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-256%20Passing-success)](test/)
+[![Tests](https://img.shields.io/badge/Tests-266%20Passing-success)](test/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A Uniswap v4 hook that tries to offset impermanent loss for liquidity providers: it scales swap fees up on oracle-adverse flow, routes idle out-of-range capital into ERC-4626 vaults, and pays the resulting yield back to LPs as an IL subsidy.
 
-> ⚠️ **Not audited. Not deployed to mainnet.** This is hackathon-stage research code. The test suite runs against a mock `PoolManager` only (see [Testing](#testing)). Do not use it with real funds.
+> ⚠️ **Not audited. Not deployed to mainnet.** This is hackathon-stage research code. Almost all tests run against a mock `PoolManager`; only the fee path is exercised against the real v4 `PoolManager` (see [Testing](#testing)). Do not use it with real funds.
 
 > 🏆 **UHI9 2026 Hackathon Submission** - Theme: Impermanent Loss & Yield Systems
 
@@ -63,8 +63,8 @@ This hook implements a closed-loop IL mitigation system:
 |---|---|
 | Audit | None. SECURITY.md lists an external audit as planned, not done. |
 | Deployment | None, on any network. |
-| Tests | 256 Foundry tests passing (unit, integration, a handful of fuzz tests) against a **mock** PoolManager. |
-| Hook permissions | `beforeInitialize`, `beforeSwap`, `beforeRemoveLiquidity` only. |
+| Tests | 266 Foundry tests passing (unit, integration, a handful of fuzz tests). Almost all use a **mock** PoolManager; 5 swap tests in `RealPoolManagerSwap.t.sol` use the real v4 one. |
+| Hook permissions | `beforeInitialize`, `beforeSwap`, `beforeRemoveLiquidity` only. Pools must be created with the dynamic-fee flag. |
 
 **Known gaps** (verified against the source, not exhaustive):
 
@@ -376,7 +376,7 @@ YieldSubsidizedDirectionalHook hook = new YieldSubsidizedDirectionalHook(poolMan
 PoolKey memory key = PoolKey({
     currency0: Currency.wrap(TOKEN0),
     currency1: Currency.wrap(TOKEN1),
-    fee: 3000,
+    fee: LPFeeLibrary.DYNAMIC_FEE_FLAG, // required: the hook sets the LP fee per swap
     tickSpacing: 60,
     hooks: IHooks(address(hook))
 });
@@ -483,10 +483,10 @@ test/
 
 ### What the tests do and don't cover
 
-256 tests pass (`forge test`). They exercise the hook's logic, access control, accounting and failure paths.
+266 tests pass (`forge test`). They exercise the hook's logic, access control, accounting and failure paths.
 
 They do **not** cover:
-- Behavior against the real Uniswap v4 `PoolManager`. All tests use `MockPoolManager`, so v4 flash-accounting semantics, hook address-flag validation, and real swap math are unverified.
+- Behavior against the real Uniswap v4 `PoolManager`, beyond the fee path. `test/integration/RealPoolManagerSwap.t.sol` runs swaps through the real `PoolManager` and checks the LP fee actually charged (benign, toxic, paused, oracle-failure). Everything else, including flash-accounting sweeps and liquidity removal, still runs against `MockPoolManager`, so v4 settlement semantics and real swap math are unverified.
 - Invariants (e.g. vault shares and principal never diverging from deposits) and extended fuzzing.
 - Adversarial vaults and oracles (reentrancy via vault callbacks, share-price manipulation, malicious oracle).
 - Fork tests against live vaults or oracles.

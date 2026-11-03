@@ -72,7 +72,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         hook = new YieldSubsidizedDirectionalHook(IPoolManager(address(poolManager)));
 
         // Create test pool key
-        testPoolKey = createPoolKey(address(token0), address(token1), POOL_FEE, TICK_SPACING, address(hook));
+        testPoolKey = createPoolKey(address(token0), address(token1), DYNAMIC_FEE, TICK_SPACING, address(hook));
         testPoolId = testPoolKey.toId();
 
         // Initialize pool through PoolManager mock
@@ -156,8 +156,12 @@ contract SwapFlowIntegrationTest is BaseTest {
         // Verify dynamic fee is applied
         // Note: Due to simplified estimation, actual fee may vary
         // We check that the fee is at least the baseline
-        assertGe(feeOverride, BASE_FEE_BPS, "Fee should be at least baseline");
-        assertLe(feeOverride, MAX_FEE_MULTIPLIER, "Fee should be capped at max multiplier");
+        assertGe(_decodeFeeBps(feeOverride), BASE_FEE_BPS, "Fee should be at least baseline");
+        assertLe(
+            _decodeFeeBps(feeOverride),
+            (uint256(BASE_FEE_BPS) * MAX_FEE_MULTIPLIER) / 10_000,
+            "Fee should be capped at max multiplier"
+        );
     }
 
     // ============ TEST: BENIGN SWAP - BASELINE FEE APPLIED ============
@@ -193,7 +197,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         assertEq(selector, hook.beforeSwap.selector, "Should return correct selector");
 
         // Verify baseline fee applied (benign flow or below threshold)
-        assertEq(feeOverride, BASE_FEE_BPS, "Benign swap should apply baseline fee");
+        assertEq(_decodeFeeBps(feeOverride), BASE_FEE_BPS, "Benign swap should apply baseline fee");
     }
 
     // ============ TEST: STALE ORACLE - BASELINE FEE FALLBACK ============
@@ -216,7 +220,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         assertEq(selector, hook.beforeSwap.selector, "Should return correct selector");
 
         // Verify baseline fee applied when oracle is stale
-        assertEq(feeOverride, BASE_FEE_BPS, "Stale oracle should fallback to baseline fee");
+        assertEq(_decodeFeeBps(feeOverride), BASE_FEE_BPS, "Stale oracle should fallback to baseline fee");
     }
 
     // ============ TEST: ORACLE FAILURE - BASELINE FEE FALLBACK ============
@@ -239,7 +243,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         assertEq(selector, hook.beforeSwap.selector, "Should return correct selector");
 
         // Verify baseline fee applied when oracle fails
-        assertEq(feeOverride, BASE_FEE_BPS, "Failed oracle should fallback to baseline fee");
+        assertEq(_decodeFeeBps(feeOverride), BASE_FEE_BPS, "Failed oracle should fallback to baseline fee");
     }
 
     // ============ TEST: FEE SCALING WITH VARIOUS DEVIATIONS ============
@@ -260,7 +264,7 @@ contract SwapFlowIntegrationTest is BaseTest {
         (,, uint24 fee1) = hook.beforeSwap(address(0), testPoolKey, smallSwap, bytes(""));
 
         // Small swap should apply baseline fee
-        assertEq(fee1, BASE_FEE_BPS, "Small swap should apply baseline fee");
+        assertEq(_decodeFeeBps(fee1), BASE_FEE_BPS, "Small swap should apply baseline fee");
 
         // Test scenario 2: Larger swap that could be toxic
         IPoolManager.SwapParams memory largeSwap = IPoolManager.SwapParams({
@@ -276,8 +280,10 @@ contract SwapFlowIntegrationTest is BaseTest {
         (,, uint24 fee2) = hook.beforeSwap(address(0), testPoolKey, largeSwap, bytes(""));
 
         // Large swap with deviation should potentially apply scaled fee
-        assertGe(fee2, BASE_FEE_BPS, "Large swap fee should be at least base");
-        assertLe(fee2, MAX_FEE_MULTIPLIER, "Fee should not exceed maximum");
+        assertGe(_decodeFeeBps(fee2), BASE_FEE_BPS, "Large swap fee should be at least base");
+        assertLe(
+            _decodeFeeBps(fee2), (uint256(BASE_FEE_BPS) * MAX_FEE_MULTIPLIER) / 10_000, "Fee should not exceed maximum"
+        );
 
         // Test scenario 3: Very large swap
         IPoolManager.SwapParams memory hugeSwap = IPoolManager.SwapParams({
@@ -293,8 +299,10 @@ contract SwapFlowIntegrationTest is BaseTest {
         (,, uint24 fee3) = hook.beforeSwap(address(0), testPoolKey, hugeSwap, bytes(""));
 
         // Huge swap should apply scaled fee
-        assertGe(fee3, BASE_FEE_BPS, "Huge swap fee should be at least base");
-        assertLe(fee3, MAX_FEE_MULTIPLIER, "Fee should not exceed maximum");
+        assertGe(_decodeFeeBps(fee3), BASE_FEE_BPS, "Huge swap fee should be at least base");
+        assertLe(
+            _decodeFeeBps(fee3), (uint256(BASE_FEE_BPS) * MAX_FEE_MULTIPLIER) / 10_000, "Fee should not exceed maximum"
+        );
     }
 
     // ============ TEST: UNAUTHORIZED CALLER REVERTS ============
@@ -318,7 +326,7 @@ contract SwapFlowIntegrationTest is BaseTest {
     function test_UnregisteredPool_Reverts() public {
         // Create a different pool key that hasn't been initialized
         PoolKey memory unregisteredKey =
-            createPoolKey(address(token1), address(token0), POOL_FEE, TICK_SPACING, address(hook));
+            createPoolKey(address(token1), address(token0), DYNAMIC_FEE, TICK_SPACING, address(hook));
 
         IPoolManager.SwapParams memory swapParams =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: -1e18, sqrtPriceLimitX96: 0});
@@ -354,7 +362,7 @@ contract SwapFlowIntegrationTest is BaseTest {
 
         // Verify baseline fee applied despite toxic conditions
         // Paused pools still return baseFeeBps from config
-        assertEq(feeOverride, BASE_FEE_BPS, "Paused pool should return baseline fee");
+        assertEq(_decodeFeeBps(feeOverride), BASE_FEE_BPS, "Paused pool should return baseline fee");
     }
 
     // ============ TEST: DIRECTIONAL FEE EVENT DETAILS ============

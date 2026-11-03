@@ -19,6 +19,10 @@ library Errors {
     /// @param poolId The pool identifier that is already registered
     error PoolAlreadyRegistered(bytes32 poolId);
 
+    /// @notice Thrown when initializing a pool whose fee is not the dynamic fee flag
+    /// @dev The PoolManager ignores a hook's fee override on static-fee pools
+    error PoolMustUseDynamicFee();
+
     /// @notice Thrown when attempting to perform an operation on a pool that is not registered
     /// @param poolId The pool identifier that is not registered
     error PoolNotRegistered(bytes32 poolId);

@@ -42,7 +42,7 @@ contract CapitalSweepTest is BaseTest {
         testPoolKey = createPoolKey(
             address(token0),
             address(token1),
-            3000, // 0.3% fee
+            DYNAMIC_FEE, // dynamic fee
             60, // tick spacing
             address(hook)
         );
@@ -197,7 +197,8 @@ contract CapitalSweepTest is BaseTest {
     /// @notice Test revert when pool not registered (Req 8.2)
     function test_RevertWhen_PoolNotRegistered() public {
         // Create unregistered pool key
-        PoolKey memory unregisteredPoolKey = createPoolKey(address(0x999), address(0x888), 3000, 60, address(hook));
+        PoolKey memory unregisteredPoolKey =
+            createPoolKey(address(0x999), address(0x888), DYNAMIC_FEE, 60, address(hook));
 
         int24[] memory tickLowers = new int24[](1);
         int24[] memory tickUppers = new int24[](1);

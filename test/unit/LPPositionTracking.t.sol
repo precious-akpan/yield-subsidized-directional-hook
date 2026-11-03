@@ -35,7 +35,7 @@ contract LPPositionTrackingTest is BaseTest {
         testPoolKey = createPoolKey(
             address(0x1000), // token0
             address(0x2000), // token1
-            3000, // 0.3% fee
+            DYNAMIC_FEE, // dynamic fee
             60, // tick spacing
             address(hook) // hooks contract
         );
@@ -253,7 +253,7 @@ contract LPPositionTrackingTest is BaseTest {
         PoolKey memory unregisteredPoolKey = createPoolKey(
             address(0x5000), // token0
             address(0x6000), // token1
-            3000, // 0.3% fee
+            DYNAMIC_FEE, // dynamic fee
             60, // tick spacing
             address(hook) // hooks contract
         );

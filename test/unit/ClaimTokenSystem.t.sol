@@ -55,7 +55,7 @@ contract ClaimTokenSystemTest is BaseTest {
         mockVault1 = new MockERC4626Vault(address(mockToken1));
 
         // Create test pool key
-        testPoolKey = createPoolKey(address(mockToken0), address(mockToken1), 3000, 60, address(hook));
+        testPoolKey = createPoolKey(address(mockToken0), address(mockToken1), DYNAMIC_FEE, 60, address(hook));
 
         // Register pool
         vm.prank(address(mockPoolManager));
@@ -98,7 +98,7 @@ contract ClaimTokenSystemTest is BaseTest {
         PoolId poolId = testPoolKey.toId();
 
         // Test with different pools
-        PoolKey memory otherPoolKey = createPoolKey(address(0x1111), address(0x2222), 3000, 60, address(hook));
+        PoolKey memory otherPoolKey = createPoolKey(address(0x1111), address(0x2222), DYNAMIC_FEE, 60, address(hook));
 
         PoolId otherPoolId = otherPoolKey.toId();
 

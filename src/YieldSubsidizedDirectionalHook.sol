@@ -11,6 +11,7 @@ import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {FullMath} from "v4-core/libraries/FullMath.sol";
 import {Currency} from "v4-core/types/Currency.sol";
+import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -359,6 +360,11 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         onlyPoolManager
         returns (bytes4)
     {
+        // The fee returned from beforeSwap is only honoured by the PoolManager for dynamic-fee pools
+        if (!LPFeeLibrary.isDynamicFee(key.fee)) {
+            revert Errors.PoolMustUseDynamicFee();
+        }
+
         PoolId poolId = key.toId();
 
         // Validate pool is not already registered
@@ -512,7 +518,7 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     /// @param params The swap parameters including direction and amount
     /// @return bytes4 The function selector to confirm successful execution
     /// @return BeforeSwapDelta The delta to apply (ZERO_DELTA for this implementation)
-    /// @return uint24 The fee override in basis points
+    /// @return uint24 The LP fee override in v4 format: pips (1e6 = 100%) with OVERRIDE_FEE_FLAG set
     function beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata params, bytes calldata)
         external
         virtual
@@ -531,7 +537,7 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
 
         // If pool is paused, return baseline fee without classification
         if (config.isPaused) {
-            return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, config.baseFeeBps);
+            return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, _toLpFeeOverride(config.baseFeeBps));
         }
 
         // Classify flow and calculate dynamic fee
@@ -541,7 +547,20 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
         _emitDirectionalFeeEvent(poolId, key, params.zeroForOne, isToxic, feeOverride);
 
         // Return fee override
-        return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, feeOverride);
+        return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, _toLpFeeOverride(feeOverride));
+    }
+
+    /// @notice Converts a fee in basis points to the format v4 expects from a beforeSwap fee override
+    /// @dev v4 fees are in pips (hundredths of a bip, 1_000_000 = 100%) and are only applied when
+    ///      OVERRIDE_FEE_FLAG is set. Fees above MAX_LP_FEE would revert the swap, so they are capped.
+    /// @param feeBps The fee in basis points (10_000 = 100%)
+    /// @return The fee in pips with OVERRIDE_FEE_FLAG set
+    function _toLpFeeOverride(uint24 feeBps) internal pure returns (uint24) {
+        uint256 pips = uint256(feeBps) * 100;
+        if (pips > LPFeeLibrary.MAX_LP_FEE) {
+            pips = LPFeeLibrary.MAX_LP_FEE;
+        }
+        return uint24(pips) | LPFeeLibrary.OVERRIDE_FEE_FLAG;
     }
 
     /// @notice Emits directional fee applied event with price information
@@ -550,7 +569,7 @@ contract YieldSubsidizedDirectionalHook is IHooks, ERC1155, ReentrancyGuard {
     /// @param key The pool key
     /// @param zeroForOne The swap direction
     /// @param isToxic Whether the flow was classified as toxic
-    /// @param feeOverride The fee applied
+    /// @param feeOverride The fee applied, in basis points
     function _emitDirectionalFeeEvent(
         PoolId poolId,
         PoolKey calldata key,

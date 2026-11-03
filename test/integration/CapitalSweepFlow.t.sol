@@ -70,7 +70,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
         hook = new YieldSubsidizedDirectionalHook(IPoolManager(address(poolManager)));
 
         // Create test pool key
-        testPoolKey = createPoolKey(address(token0), address(token1), POOL_FEE, TICK_SPACING, address(hook));
+        testPoolKey = createPoolKey(address(token0), address(token1), DYNAMIC_FEE, TICK_SPACING, address(hook));
         testPoolId = testPoolKey.toId();
 
         // Initialize pool through PoolManager mock
@@ -376,7 +376,7 @@ contract CapitalSweepFlowIntegrationTest is BaseTest {
     function test_RevertWhen_PoolNotRegistered() public {
         // Create unregistered pool key
         PoolKey memory unregisteredKey =
-            createPoolKey(address(0x999), address(0x888), POOL_FEE, TICK_SPACING, address(hook));
+            createPoolKey(address(0x999), address(0x888), DYNAMIC_FEE, TICK_SPACING, address(hook));
 
         int24[] memory tickLowers = new int24[](1);
         int24[] memory tickUppers = new int24[](1);

@@ -184,7 +184,7 @@ address constant ADMIN = 0x0000000000000000000000000000000000000004;
 ### Helper Functions
 ```solidity
 // Create pool key
-PoolKey memory key = createPoolKey(token0, token1, 3000, 60, hookAddress);
+PoolKey memory key = createPoolKey(token0, token1, DYNAMIC_FEE, 60, hookAddress);
 
 // Deal tokens
 dealTokens(tokenAddress, ALICE, 1000e18);

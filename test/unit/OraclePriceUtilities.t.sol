@@ -6,6 +6,7 @@ import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
+import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {Currency} from "v4-core/types/Currency.sol";
@@ -46,7 +47,7 @@ contract OraclePriceUtilitiesTest is Test {
         poolKey = PoolKey({
             currency0: Currency.wrap(address(0x1000)),
             currency1: Currency.wrap(address(0x2000)),
-            fee: 3000,
+            fee: LPFeeLibrary.DYNAMIC_FEE_FLAG,
             tickSpacing: 60,
             hooks: IHooks(address(hookHelper))
         });

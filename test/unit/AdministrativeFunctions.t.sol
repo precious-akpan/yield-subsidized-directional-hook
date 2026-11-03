@@ -72,7 +72,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         testPoolKey = PoolKey({
             currency0: Currency.wrap(address(token0)),
             currency1: Currency.wrap(address(token1)),
-            fee: 3000,
+            fee: DYNAMIC_FEE,
             tickSpacing: 60,
             hooks: IHooks(address(hook))
         });
@@ -166,7 +166,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         PoolKey memory unregisteredPool = PoolKey({
             currency0: Currency.wrap(address(0x1234)),
             currency1: Currency.wrap(address(0x5678)),
-            fee: 3000,
+            fee: DYNAMIC_FEE,
             tickSpacing: 60,
             hooks: IHooks(address(0))
         });
@@ -389,7 +389,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         PoolKey memory unregisteredPool = PoolKey({
             currency0: Currency.wrap(address(0x1234)),
             currency1: Currency.wrap(address(0x5678)),
-            fee: 3000,
+            fee: DYNAMIC_FEE,
             tickSpacing: 60,
             hooks: IHooks(address(0))
         });
@@ -443,7 +443,7 @@ contract AdministrativeFunctionsTest is BaseTest {
         PoolKey memory unregisteredPool = PoolKey({
             currency0: Currency.wrap(address(0x1234)),
             currency1: Currency.wrap(address(0x5678)),
-            fee: 3000,
+            fee: DYNAMIC_FEE,
             tickSpacing: 60,
             hooks: IHooks(address(0))
         });

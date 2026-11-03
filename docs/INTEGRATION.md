@@ -45,7 +45,7 @@ import {IHooks} from "v4-core/interfaces/IHooks.sol";
 PoolKey memory key = PoolKey({
     currency0: Currency.wrap(TOKEN0_ADDRESS),
     currency1: Currency.wrap(TOKEN1_ADDRESS),
-    fee: 3000,                              // 0.30% base fee
+    fee: LPFeeLibrary.DYNAMIC_FEE_FLAG,     // required: the hook sets the LP fee per swap
     tickSpacing: 60,                        // Standard tick spacing
     hooks: IHooks(address(hook))
 });
@@ -90,7 +90,7 @@ hook.configurePool(poolId, config);
 
 - **oracle**: Must return manipulation-resistant prices (TWAP recommended)
 - **vault0/vault1**: Must implement ERC-4626 standard
-- **baseFeeBps**: Normal fee when flow is benign (30 = 0.30%)
+- **baseFeeBps**: Normal fee when flow is benign (30 = 0.30%). Kept in basis points; the hook converts to v4 pips (and sets the override flag) when returning the fee from `beforeSwap`
 - **maxFeeMultiplier**: Maximum fee multiplier (30000 = 3.0x of base)
 - **deviationThresholdBps**: Price deviation before fee scaling kicks in (50 = 0.50%)
 
