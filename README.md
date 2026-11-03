@@ -4,10 +4,12 @@
 [![Uniswap v4](https://img.shields.io/badge/Uniswap-v4-FF007A?logo=uniswap)](https://uniswap.org/)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C?logo=ethereum)](https://getfoundry.sh/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-171%20Passing-success)](test/)
+[![Tests](https://img.shields.io/badge/Tests-256%20Passing-success)](test/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A production-ready Uniswap v4 Hook that protects Liquidity Providers from Impermanent Loss through directional fee scaling, external yield generation, and automated IL compensation.
+A Uniswap v4 hook that tries to offset impermanent loss for liquidity providers: it scales swap fees up on oracle-adverse flow, routes idle out-of-range capital into ERC-4626 vaults, and pays the resulting yield back to LPs as an IL subsidy.
+
+> ⚠️ **Not audited. Not deployed to mainnet.** This is hackathon-stage research code. The test suite runs against a mock `PoolManager` only (see [Testing](#testing)). Do not use it with real funds.
 
 > 🏆 **UHI9 2026 Hackathon Submission** - Theme: Impermanent Loss & Yield Systems
 
@@ -16,7 +18,9 @@ A production-ready Uniswap v4 Hook that protects Liquidity Providers from Imperm
 ## 📑 Table of Contents
 
 - [Overview](#overview)
+- [Status and Scope](#status-and-scope)
 - [Features](#features)
+- [Design Tradeoffs](#design-tradeoffs)
 - [How It Works](#how-it-works)
 - [Architecture](#architecture)
 - [Installation](#installation)
@@ -32,7 +36,7 @@ A production-ready Uniswap v4 Hook that protects Liquidity Providers from Imperm
 
 ## Overview
 
-The **Yield Subsidized Directional Hook** is a sophisticated Uniswap v4 hook that addresses the critical challenge of impermanent loss (IL) through an innovative three-mechanism approach, creating a sustainable, LP-protective liquidity environment.
+The **Yield Subsidized Directional Hook** combines three mechanisms to reduce LP impermanent loss (IL). Whether the yield and fee uplift can actually cover IL in practice is untested: nothing here has been run against a real pool, real vaults, or live oracle data.
 
 ### The Problem
 
@@ -51,6 +55,27 @@ This hook implements a closed-loop IL mitigation system:
 
 ---
 
+## Status and Scope
+
+**Stack:** Solidity 0.8.26+ (`via_ir`), Foundry, Uniswap v4 core, OpenZeppelin (ERC-1155 claim tokens, `ReentrancyGuard`), ERC-4626 vaults, Reactive Network for optional keeper automation.
+
+| | |
+|---|---|
+| Audit | None. SECURITY.md lists an external audit as planned, not done. |
+| Deployment | None, on any network. |
+| Tests | 256 Foundry tests passing (unit, integration, a handful of fuzz tests) against a **mock** PoolManager. |
+| Hook permissions | `beforeInitialize`, `beforeSwap`, `beforeRemoveLiquidity` only. |
+
+**Known gaps** (verified against the source, not exhaustive):
+
+- LP identity on removal is taken from `tx.origin`, which breaks for smart-contract wallets and routers.
+- Post-swap price in flow classification is a simplified approximation, not v4 tick math (`estimatePostSwapPrice`).
+- Only a single oracle per pool; if it is stale or invalid the hook falls back to the base fee.
+- Vault trust is assumed: a malicious or insolvent ERC-4626 vault can lock or lose swept capital. The claim-token path handles illiquidity, not insolvency.
+- No invariant tests, no fork tests against a real PoolManager, no adversarial vault or oracle tests.
+
+---
+
 ## Features
 
 ### Core Mechanisms
@@ -58,7 +83,6 @@ This hook implements a closed-loop IL mitigation system:
 - **Dynamic Fee Engine**
   - Oracle-based toxic flow detection
   - Linear fee scaling proportional to price deviation
-  - Gas-optimized O(1) swap path execution
   - Configurable fee curves per pool
 
 - **Asynchronous Capital Management**
@@ -91,12 +115,31 @@ This hook implements a closed-loop IL mitigation system:
 
 ### Developer Experience
 
-- Modular architecture with clean separation of concerns
-- Comprehensive test suite (unit + integration + property tests)
-- Rich event emission for analytics and monitoring
-- Configurable parameters per pool
-- Extensive NatSpec documentation
-- Production-ready with gas optimizations
+- Per-pool configuration and accounting, keyed by `PoolId`
+- Unit and integration tests plus a few fuzz tests (no invariant tests yet)
+- Event emission for analytics and monitoring
+- NatSpec on the main contract
+
+---
+
+## Design Tradeoffs
+
+> Draft. This section records the reasoning visible in the code; it is the part most worth refining.
+
+**Why scale fees by direction rather than by volatility or a flat fee.**
+A flat fee charges rebalancing flow and toxic flow the same. Volatility-based dynamic fees raise the cost for everyone when the market moves, including trades that push the pool *toward* fair value. Here, `classifyFlow` compares the pool price before and after the swap against an oracle price. Only swaps that increase the deviation, and end above `deviationThresholdBps`, pay a scaled fee. Everything else pays the base fee, and the multiplier is capped by `maxFeeMultiplier` (hard cap 10x).
+
+**What this costs.**
+- An oracle dependency on the swap path. Stale or out-of-bounds prices (5 minute staleness, 50% sanity bound) fall back to the base fee rather than reverting, so an oracle outage degrades protection instead of halting swaps.
+- Extra gas on every swap for the oracle read (the call is capped at 100k gas).
+- Oracle prices more than 50% away from the pool price are rejected as invalid, so protection switches off exactly when the pool has diverged most.
+- Classification is only as good as the post-swap price estimate, which is currently approximate.
+- The scaling is linear above the threshold. Other curves (exponential, sigmoid) are listed in the roadmap and are not implemented.
+
+**Why sweep idle capital to vaults, and why claim tokens.**
+Out-of-range liquidity earns no fees. Sweeping it into ERC-4626 vaults makes it productive, and the yield funds the subsidy. The risk is that LP withdrawals would depend on vault liquidity, so when a vault withdrawal fails, the LP receives an ERC-1155 claim token redeemable later instead of having removal blocked. This trades withdrawal liveness for deferred settlement. It does not protect against vault insolvency.
+
+**Alternatives not taken here:** oracle-free fee schemes, auction or rebate designs that return LVR to LPs, and pause-on-deviation. They avoid the oracle dependency, but were not evaluated in this repository.
 
 ---
 
@@ -229,7 +272,7 @@ graph TB
 
 ```solidity
 contract YieldSubsidizedDirectionalHook is 
-    BaseHook,           // Uniswap v4 hook integration
+    IHooks,             // Uniswap v4 hook interface
     ERC1155,            // Claim token implementation
     ReentrancyGuard     // Security protection
 {
@@ -429,23 +472,25 @@ bool isRegistered = hook.isPoolRegistered(poolId);
 
 ```
 test/
-├── unit/
-│   ├── OracleIntegration.t.sol
-│   ├── FeeScaling.t.sol
-│   ├── CapitalSweep.t.sol
-│   ├── ILCalculation.t.sol
-│   ├── SubsidyDistribution.t.sol
-│   └── ClaimTokens.t.sol
-├── integration/
-│   ├── EndToEndSwapFlow.t.sol
-│   ├── EndToEndSweepFlow.t.sol
-│   ├── EndToEndSubsidyFlow.t.sol
-│   └── MultiPoolScenarios.t.sol
-└── security/
-    ├── ReentrancyTests.t.sol
-    ├── AccessControlTests.t.sol
-    └── PriceManipulationTests.t.sol
+├── unit/          # one file per mechanism: access control, pool registration,
+│                  # oracle, flow classification, fee scaling, capital sweep, IL,
+│                  # LP tracking, subsidy distribution, claim tokens, admin,
+│                  # reactive automation
+├── integration/   # SwapFlow, CapitalSweepFlow, AutomatedSweeps
+├── mocks/         # MockPoolManager, MockERC4626Vault, MockOracle, MockERC20
+└── helpers/
 ```
+
+### What the tests do and don't cover
+
+256 tests pass (`forge test`). They exercise the hook's logic, access control, accounting and failure paths.
+
+They do **not** cover:
+- Behavior against the real Uniswap v4 `PoolManager`. All tests use `MockPoolManager`, so v4 flash-accounting semantics, hook address-flag validation, and real swap math are unverified.
+- Invariants (e.g. vault shares and principal never diverging from deposits) and extended fuzzing.
+- Adversarial vaults and oracles (reentrancy via vault callbacks, share-price manipulation, malicious oracle).
+- Fork tests against live vaults or oracles.
+- Gas: no measured benchmarks are published here; run `forge test --gas-report`.
 
 ### Running Tests
 
@@ -454,7 +499,7 @@ test/
 forge test
 
 # Run specific test file
-forge test --match-path test/unit/FeeScaling.t.sol
+forge test --match-path test/unit/DirectionalFeeScaling.t.sol
 
 # Run with verbose output
 forge test -vvv
@@ -468,16 +513,7 @@ forge coverage
 # Run integration tests only
 forge test --match-path "test/integration/*"
 
-# Run security tests
-forge test --match-path "test/security/*"
 ```
-
-### Test Coverage Goals
-
-- **Unit Tests**: >95% coverage
-- **Integration Tests**: All critical user flows
-- **Security Tests**: All known attack vectors
-- **Gas Benchmarks**: Swap path <100k gas overhead
 
 ---
 
@@ -485,7 +521,7 @@ forge test --match-path "test/security/*"
 
 ### Audit Status
 
-**Pre-audit** - This contract has not been formally audited yet. Use at your own risk.
+**Not audited.** No external review has been done, and the contract has not been deployed to any network. Do not use with real funds.
 
 ### Security Considerations
 
@@ -590,23 +626,15 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## Performance
 
-### Gas Benchmarks
+### Gas
 
-| Operation | Gas Cost | Notes |
-|-----------|----------|-------|
-| beforeSwap (toxic) | ~45,000 | Oracle query + fee calculation |
-| beforeSwap (benign) | ~38,000 | Oracle query + baseline fee |
-| sweepIdleCapital | ~180,000 | Flash accounting + vault deposits |
-| beforeRemoveLiquidity (with subsidy) | ~95,000 | IL calculation + vault withdrawal |
-| redeemLockedCapital | ~65,000 | Vault withdrawal + claim burn |
-
-*Benchmarks measured on Anvil local network. Actual costs vary by network and pool state.*
+No verified benchmarks are published yet. Run `forge test --gas-report` for current numbers.
 
 ### Scalability
 
-- **Supported Pools**: Unlimited (multi-pool support)
+- **Supported Pools**: Multi-pool; state is keyed by `PoolId` (not load-tested)
 - **Concurrent Sweeps**: Permissionless keeper model
-- **LP Positions**: O(1) per-LP tracking
+- **LP Positions**: Tracked per LP and PoolId in mappings
 - **Claim Tokens**: Fungible ERC-1155 per pool-vault-token combination
 
 ---
@@ -622,10 +650,10 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ### Phase 2: Automation & Testing (In Progress)
 - [x] Reactive Network integration for automated keepers
 - [x] Decentralized capital sweep automation
-- [ ] Comprehensive unit test coverage
-- [ ] Integration test scenarios
-- [ ] Security test suite
-- [ ] Gas optimizations
+- [x] Unit and integration tests against a mock PoolManager
+- [ ] Tests against the real v4 PoolManager (fork or deployed)
+- [ ] Invariant tests and adversarial vault/oracle tests
+- [ ] Gas benchmarks and optimization
 
 ### Phase 3: Audit & Deployment (Planned)
 - [ ] External security audit
