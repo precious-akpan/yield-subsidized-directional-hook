@@ -1,12 +1,10 @@
 name: hookguard
 
-# Checks the hook for known Uniswap v4 footguns on every change.
+# Checks the hook for known Uniswap v4 footguns on every pull request.
 # Heuristic pattern matching, not an audit. Annotates only, never blocks.
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -16,8 +14,10 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: chaosxcode/hookguard@v1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: chaosxcode/hookguard@1fd0ddab626f2578a43ae377cc2a5903d9073a5a # v1
         with:
           paths: src
           fail-on: never
